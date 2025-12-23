@@ -255,7 +255,7 @@ void loop() {
     OneWireNode::loop();
 #ifdef NODO
     static unsigned long lastDisplayUpdate = 0;
-    if (OLED_PRESENT && now - lastDisplayUpdate > 1000) { 
+    if (now - lastDisplayUpdate > 1000) { 
         displayNetworkStatus(); 
         lastDisplayUpdate = now;
     }
