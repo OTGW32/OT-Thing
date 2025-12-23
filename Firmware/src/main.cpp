@@ -66,12 +66,128 @@ class scanCallbacks : public NimBLEScanCallbacks {
     }
 } scanCallbacks;
 */
+
+#ifdef NODO
+bool OLED_PRESENT = false;
+bool WIRED_ETHERNET_PRESENT = false;
+Adafruit_SSD1306 oled_display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+byte ethMac[6];
+// ** New function for display status **
+void displayNetworkStatus() {
+    if (!OLED_PRESENT)
+        return; // Skip if no display detected
+    oled_display.clearDisplay();
+    oled_display.setTextSize(1);
+    oled_display.setTextColor(SSD1306_WHITE);
+    oled_display.setCursor(0, 0);
+
+    String ipLine = F("");
+    String statusLine = F("");
+
+    if (configMode) {
+        // 1. CONFIG MODE (Highest Priority Display)
+        statusLine = F("OTGW32 Config");
+        ipLine = String(F("AP: ")) + WiFi.softAPIP().toString();
+    } else if (WIRED_ETHERNET_PRESENT) {
+        // 2. WIRED ETHERNET (Ethernet is active and connected)
+        statusLine = F("Network: WIRED");
+        ipLine = String(F("IP: ")) + Ethernet.localIP().toString();
+    } else {
+        // 3. WIFI STATUS (Ethernet failed or is absent)
+        statusLine = F("Network: WiFi");
+        if (WiFi.isConnected()) {
+            statusLine = F("WiFi: Connected");
+            ipLine = String(F("IP: ")) + WiFi.localIP().toString();
+        } else {
+            statusLine = F("WiFi: Connecting");
+            ipLine = String(F("SSID: ")) + WiFi.SSID();
+        }
+    }
+
+    // Draw the lines
+    oled_display.println(statusLine);
+    oled_display.setCursor(0, 10);
+    oled_display.println(ipLine);
+
+    // --- Add OT Status Line ---
+    // You can add a third line for boiler status, e.g., using otcontrol.getStatus()
+    oled_display.setCursor(0, 20);
+    // Placeholder: This will require accessing OT status variables
+    oled_display.println(F("OT Status: OK/Fail")); 
+    
+    oled_display.display();
+}
+#endif // NODO
+
 void setup() {
     pinMode(GPIO_STATUS_LED, OUTPUT);
     pinMode(GPIO_CONFIG_BUTTON, INPUT);
     
     setLedStatus(false);
+#ifdef NODO  // Initialize I2C display and wired ethernet
+  Wire.begin(GPIO_I2C_SDA, GPIO_I2C_SCL);  // SDA=21, SCL=22 (default ESP32 pins)
 
+  // Initialize OLED
+  Wire.beginTransmission(0x3C);
+  if (Wire.endTransmission() == 0) { // device responded
+    if (oled_display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+      // Clear buffer
+      oled_display.clearDisplay();
+
+      // Set text properties
+      oled_display.setTextSize(2);             // Text size multiplier
+      oled_display.setTextColor(SSD1306_WHITE);
+      oled_display.setCursor(10, 25);          // Position on screen
+
+      // Print message
+      oled_display.println("Nodo OTGW32");
+
+      // Push to display
+      oled_display.display();
+      OLED_PRESENT = true;
+    }
+  }
+  // Attempt to Reset W5500 if present
+  pinMode(GPIO_SPI_RST, OUTPUT);
+  digitalWrite(GPIO_SPI_RST, LOW);
+  delay(100);
+  digitalWrite(GPIO_SPI_RST, HIGH);
+  delay(100);
+  // Initialize Ethernet
+  SPI.begin(GPIO_SPI_SCK, GPIO_SPI_MISO, GPIO_SPI_MOSI, GPIO_SPI_CS);
+
+  Ethernet.init(GPIO_SPI_CS);
+  if (Ethernet.hardwareStatus() == EthernetW5500) {
+    // Get ESP32 MAC
+    uint64_t mac64 = ESP.getEfuseMac();
+    for (int i = 0; i < 6; i++) 
+        ethMac[5 - i] = (mac64 >> (8 * i)) & 0xFF;
+    // Mark as locally administered (set bit 1 of first byte)
+    ethMac[0] |= 0x02;
+
+    Serial.printf("Derived W5500 MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+                    ethMac[0], ethMac[1], ethMac[2],
+                    ethMac[3], ethMac[4], ethMac[5]);
+
+    if (!Ethernet.begin(ethMac)) {
+        Serial.println("Failed to configure Ethernet using DHCP");
+        // possible static IP support goes here
+    } else // we have a DHCP IP address
+        if (Ethernet.linkStatus() == LinkON) { // belt and braces
+            Serial.println("Physical link is UP.");
+            Serial.print("DHCP successful! IP address: ");
+            Serial.println(Ethernet.localIP());
+            WIRED_ETHERNET_PRESENT = true; /* this enables all subsequent network calls to use Ethernet instead of Wifi */
+            String hn = devconfig.getHostname();
+            MDNS.begin(hn.c_str());
+            MDNS.addService("http", "tcp", 80);
+            const char* tz = "UTC0";
+            configTzTime(tz, "pool.ntp.org");
+        } else 
+            Serial.println("Physical link is DOWN. Check cable connection.");
+    } else
+        Serial.printf("no Ethernet hardware found\n");
+#endif
     otcontrol.begin();
 
     statusLedTicker.attach(0.2, statusLedLoop);
@@ -137,4 +253,13 @@ void loop() {
     Sensor::loopAll();
     devconfig.loop();
     OneWireNode::loop();
+#ifdef NODO
+    static unsigned long lastDisplayUpdate = 0;
+    if (OLED_PRESENT && now - lastDisplayUpdate > 1000) { 
+        displayNetworkStatus(); 
+        lastDisplayUpdate = now;
+    }
+    if (WIRED_ETHERNET_PRESENT) 
+        Ethernet.maintain(); /* keep DHCP lease etc */
+#endif   
 }
