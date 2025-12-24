@@ -155,7 +155,7 @@ void setup() {
   digitalWrite(GPIO_SPI_RST, LOW);
   delay(100);
   digitalWrite(GPIO_SPI_RST, HIGH);
-  delay(100);
+  delay(200); /* W5500 can take 150ms to settle */
   // Initialize Ethernet
   SPI.begin(GPIO_SPI_SCK, GPIO_SPI_MISO, GPIO_SPI_MOSI, GPIO_SPI_CS);
 
