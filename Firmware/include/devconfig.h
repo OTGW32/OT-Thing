@@ -11,6 +11,7 @@ private:
     bool writeBufFlag;
     String writeBuf;
     String hostname;
+    int timezone;
     bool fsOk;
 public:
     DevConfig();
@@ -20,6 +21,7 @@ public:
     void remove();
     void loop();
     String getHostname() const;
+    int getTimezone() const;
     bool hasFS() const { return fsOk; }
 } devconfig;
 
