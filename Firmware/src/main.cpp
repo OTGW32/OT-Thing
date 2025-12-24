@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <SPI.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <Ticker.h>
@@ -19,6 +20,11 @@
 #include <ArduinoOTA.h>
 #endif
 
+#ifdef NODO
+#include <EthernetESP32.h>
+SPIClass SPI1(FSPI);
+W5500Driver driver(GPIO_SPI_CS, GPIO_SPI_INT, GPIO_SPI_RST);
+#endif
 Ticker statusLedTicker;
 volatile uint16_t statusLedData = 0x8000;
 bool configMode = false;
@@ -150,75 +156,71 @@ void setup() {
       OLED_PRESENT = true;
     }
   }
-  // Attempt to Reset W5500 if present
-  pinMode(GPIO_SPI_RST, OUTPUT);
-  digitalWrite(GPIO_SPI_RST, LOW);
-  delay(100);
-  digitalWrite(GPIO_SPI_RST, HIGH);
-  delay(200); /* W5500 can take 150ms to settle */
   // Initialize Ethernet
-  SPI.begin(GPIO_SPI_SCK, GPIO_SPI_MISO, GPIO_SPI_MOSI, GPIO_SPI_CS);
-
-  Ethernet.init(GPIO_SPI_CS);
-  if (Ethernet.hardwareStatus() == EthernetW5500) {
+  SPI1.begin(GPIO_SPI_SCK, GPIO_SPI_MISO, GPIO_SPI_MOSI);
+  driver.setSPI(SPI1);
+  driver.setSpiFreq(10);
+  driver.setPhyAddress(0);
+  Ethernet.init(driver);
+  if (Ethernet.hardwareStatus() != EthernetHardwareFound) {
     // Get ESP32 MAC
     uint64_t mac64 = ESP.getEfuseMac();
-    for (int i = 0; i < 6; i++) 
-        ethMac[5 - i] = (mac64 >> (8 * i)) & 0xFF;
+    for (int i = 0; i < 6; i++) {
+      ethMac[5 - i] = (mac64 >> (8 * i)) & 0xFF;
+    }
     // Mark as locally administered (set bit 1 of first byte)
     ethMac[0] |= 0x02;
 
     Serial.printf("Derived W5500 MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-                    ethMac[0], ethMac[1], ethMac[2],
-                    ethMac[3], ethMac[4], ethMac[5]);
+                  ethMac[0], ethMac[1], ethMac[2], ethMac[3], ethMac[4],
+                  ethMac[5]);
 
-    if (!Ethernet.begin(ethMac)) {
-        Serial.println("Failed to configure Ethernet using DHCP");
-        // possible static IP support goes here
-    } else // we have a DHCP IP address
-        if (Ethernet.linkStatus() == LinkON) { // belt and braces
-            Serial.println("Physical link is UP.");
-            Serial.print("DHCP successful! IP address: ");
-            Serial.println(Ethernet.localIP());
-            WIRED_ETHERNET_PRESENT = true; /* this enables all subsequent network calls to use Ethernet instead of Wifi */
-            String hn = devconfig.getHostname();
-            MDNS.begin(hn.c_str());
-            MDNS.addService("http", "tcp", 80);
-            const char* tz = "UTC0";
-            configTzTime(tz, "pool.ntp.org");
-        } else 
-            Serial.println("Physical link is DOWN. Check cable connection.");
-    } else
-        Serial.printf("no Ethernet hardware found\n");
-#endif
-    otcontrol.begin();
-
-    statusLedTicker.attach(0.2, statusLedLoop);
-
-    // Wifi needs to be initialized.
-    WiFi.mode(WIFI_STA);
-    // Read out the config from NVS
-    wifi_config_t conf;
-    esp_err_t err = esp_wifi_get_config(WIFI_IF_STA, &conf);
-    // If read is successfull and an ssid is specified we assume its stored
-    bool noStoredWifi = (err != ESP_OK || conf.sta.ssid[0] == '\0');
-
-    configMode = (digitalRead(GPIO_CONFIG_BUTTON) == 0) || noStoredWifi;
-    if (configMode){
-        statusLedData = 0xA000;
+    if (Ethernet.begin(ethMac)) {
+      if (Ethernet.linkStatus() == LinkON) { // belt and braces
+        Serial.print("DHCP successful! IP address: ");
+        Serial.println(Ethernet.localIP());
+        WIRED_ETHERNET_PRESENT = true;
+      } else {
+        Serial.println("Physical link is DOWN. Check cable connection.");
+      }
+    } else {
+      Serial.println("Failed to obtain DHCP");
     }
+  } else {
+    Serial.printf("no Ethernet hardware found\n");
+  }
+#endif
+  otcontrol.begin();
 
+  statusLedTicker.attach(0.2, statusLedLoop);
+
+  // Wifi needs to be initialized.
+  WiFi.mode(WIFI_STA);
+  // Read out the config from NVS
+  wifi_config_t conf;
+  esp_err_t err = esp_wifi_get_config(WIFI_IF_STA, &conf);
+  // If read is successfull and an ssid is specified we assume its stored
+  bool noStoredWifi = (err != ESP_OK || conf.sta.ssid[0] == '\0');
+
+  configMode = (digitalRead(GPIO_CONFIG_BUTTON) == 0) || noStoredWifi;
+  if (configMode) {
+    statusLedData = 0xA000;
+  }
+
+  if (WIRED_ETHERNET_PRESENT == false) {
     WiFi.onEvent(wifiEvent);
     WiFi.setSleep(false);
     WiFi.begin();
-    OneWireNode::begin();
-    haDisc.begin();
-    mqtt.begin();
-    devconfig.begin();
-    configTime(devconfig.getTimezone(), 3600, PSTR("pool.ntp.org"));
+  }
+  OneWireNode::begin();
+  haDisc.begin();
+  mqtt.begin();
+  devconfig.begin();
+  configTime(devconfig.getTimezone(), 3600, PSTR("pool.ntp.org"));
 
-    portal.begin(configMode);
-    command.begin();
+  portal.begin(configMode);
+
+  command.begin();
 /*
     NimBLEDevice::init("");                         // Initialize the device, you can specify a device name if you want.
     NimBLEScan* pBLEScan = NimBLEDevice::getScan(); // Create the scan object.
@@ -267,7 +269,8 @@ void loop() {
         displayNetworkStatus(); 
         lastDisplayUpdate = now;
     }
-    if (WIRED_ETHERNET_PRESENT) 
+    if (WIRED_ETHERNET_PRESENT) {
         Ethernet.maintain(); /* keep DHCP lease etc */
+    }
 #endif   
 }

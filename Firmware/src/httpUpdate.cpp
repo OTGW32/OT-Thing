@@ -1,6 +1,6 @@
 #include "httpUpdate.h"
 #include <Update.h>
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
 
 HttpUpdate httpupdate;
 
