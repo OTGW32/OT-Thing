@@ -9,12 +9,21 @@
 
 OTControl otcontrol;
 
+const int PI_INTERVAL = 60;
+
 constexpr uint16_t floatToOT(double f) {
     return (((int) f) << 8) | (int) ((f - (int) f) * 256);
 }
 
 constexpr uint16_t nib(uint8_t hb, uint8_t lb) {
     return (hb << 8) | lb;
+}
+
+void clip(double &d, const double min, const double max) {
+    if (d < min)
+        d = min;
+    if (d > max)
+        d = max;
 }
 
 // Testdata for local OT slave, can be read by a connected master
@@ -232,22 +241,16 @@ double OTControl::getFlow(const uint8_t channel) {
             double c1 = (hc.flowMax - roomSet) / pow(roomSet - minOutside, 1.0 / hc.exponent);
             flow = roomSet + c1 * pow(roomSet - outTmp, 1.0 / hc.exponent) + hc.offset;
         }
-        double rst, rt;
-        // room temperature compensation
-        if ( roomSetPoint[channel].get(rst) && roomTemp[channel].get(rt) ) {
-            flow += (rst - rt) * hc.roomTempComp;
-        }
-        if (flow > hc.flowMax)
-            flow = hc.flowMax;
-        if (flow < 0)
-            flow = 0;
         break;
     }
 
     case CTRLMODE_OFF:
-        flow = 0;
-        break;
+        return 0;
     }
+
+    // room temperature compensation
+    flow += heatingCtrl->piCtrl.deltaT;
+    clip(flow, 0, hc.flowMax);
 
     return flow;
 }
@@ -255,6 +258,11 @@ double OTControl::getFlow(const uint8_t channel) {
 void OTControl::loop() {
     master.hal.process();
     slave.hal.process();
+
+    if (millis() > nextPiCtrl) {
+        loopPiCtrl();
+        nextPiCtrl = millis() + PI_INTERVAL * 1000;
+    }
 
     if (!discFlag)
         discFlag = sendDiscovery();
@@ -276,7 +284,7 @@ void OTControl::loop() {
     case OTMODE_LOOPBACKTEST: {
         for (int ch=0; ch<2; ch++) {
             if (setRoomTemp[ch]) {
-                setRoomTemp[ch].sendTemp(21.5);
+                setRoomTemp[ch].sendTemp(20.1);
                 xSemaphoreGive(master.mutex);
                 return;
             }
@@ -315,7 +323,6 @@ void OTControl::loop() {
             for (int ch=0; ch<2; ch++) {
                 if (heatingCtrl[ch].chOn && setBoilerRequest[ch]) {
                     double flow = getFlow(ch);
-
                     if (flow > 0) {
                         setBoilerRequest[ch].sendTemp(flow);
                         xSemaphoreGive(master.mutex);
@@ -343,11 +350,11 @@ void OTControl::loop() {
                 lastBoilerStatus = millis();
 
                 unsigned long req = OpenTherm::buildSetBoilerStatusRequest(
-                    heatingCtrl[0].chOn, 
+                    heatingCtrl[0].chOn && !(heatingConfig[0].enableHyst && heatingCtrl[0].suspended), 
                     boilerCtrl.dhwOn,
                     boilerConfig.coolOn,
                     boilerConfig.otc, 
-                    heatingCtrl[1].chOn,
+                    heatingCtrl[1].chOn && !(heatingConfig[1].enableHyst && heatingCtrl[1].suspended),
                     boilerConfig.summerMode,
                     boilerConfig.dhwBlocking);
                 req |= statusReqOvl;
@@ -390,6 +397,63 @@ void OTControl::loop() {
         break;
     }
     xSemaphoreGive(master.mutex);
+}
+
+void OTControl::loopPiCtrl() {
+    for (int i=0; i<2; i++) {
+        HeatingControl::PiCtrl &pictrl = heatingCtrl[i].piCtrl;
+        double rt, rsp;
+
+        if (!heatingConfig[i].enableHyst)
+            heatingCtrl[i].suspended = false;
+
+        pictrl.deltaT = 0;
+
+        if (!roomTemp[i].get(rt))
+            continue;
+
+        if (pictrl.init)
+            pictrl.roomTempFilt = 0.1 * rt + 0.9 * pictrl.roomTempFilt;
+        else
+            pictrl.roomTempFilt = rt;
+
+        pictrl.init = true;
+
+        if (!roomSetPoint[i].get(rsp))
+            continue;
+
+        if (heatingConfig[i].enableHyst) {
+            if (heatingCtrl[i].suspended) {
+                if (rt < rsp - heatingConfig[i].hysteresis)
+                    heatingCtrl[i].suspended = false;
+            }
+            else {
+                if (rt > rsp + heatingConfig[i].hysteresis)
+                    heatingCtrl[i].suspended = true;
+            }
+        }
+
+        double e = rsp - rt; // error
+        if ((e > -0.2) && (e < 0.2)) // deadband
+            e = 0;
+
+        // proportional part of PI controller
+        double p = heatingConfig[i].roomTempComp * e; // Kp * e
+        
+        // integral part of PI controller
+        OTValueStatus *ots = static_cast<OTValueStatus*>(OTValue::getSlaveValue(OpenThermMessageID::Status));
+        if ( (ots != nullptr) && (ots->getMode(i)) )
+            pictrl.integState += heatingConfig[i].roomTempCompI * e * PI_INTERVAL / 3600.0; // Ki * e * ts, ts = 60 s
+        else
+            pictrl.integState = pictrl.integState * 0.95; // decay
+
+        // anti windup
+        clip(pictrl.integState, -5, 5);
+
+        pictrl.deltaT = p + pictrl.integState;
+        // clipping
+        clip(pictrl.deltaT, -5, 10);
+    }
 }
 
 void OTControl::sendRequest(const char source, const unsigned long msg) {
@@ -661,7 +725,11 @@ void OTControl::OnRxSlave(const unsigned long msg, const OpenThermResponseStatus
         break;
     }   
 
-    if ( (mt == OpenThermMessageType::WRITE_DATA) || (id == OpenThermMessageID::Status) || (id == OpenThermMessageID::StatusVentilationHeatRecovery) ) {
+    if ( (mt == OpenThermMessageType::WRITE_DATA) || 
+         (id == OpenThermMessageID::Status) || 
+         (id == OpenThermMessageID::StatusVentilationHeatRecovery) ||
+         (id == OpenThermMessageID::TrSet) // roomunit RAM 786 sends TrSet as READ command (out of spec!)
+       ) {
         double d = OpenTherm::getFloat(newMsg);
         switch (id) {
         case OpenThermMessageID::Tr:
@@ -733,6 +801,10 @@ void OTControl::getJson(JsonObject &obj) {
 
         hc[F("ovrdFlow")] = heatingCtrl[i].overrideFlow;
         hc[F("mode")] = (int) heatingCtrl[i].mode;
+        hc[F("integState")] = heatingCtrl[i].piCtrl.integState;
+        hc[F("roomTempFilt")] = heatingCtrl[i].piCtrl.roomTempFilt;
+        if (heatingConfig[i].enableHyst)
+            hc[F("suspended")] = heatingCtrl[i].suspended;
     }
 
     if (slaveEnabled) {
@@ -809,6 +881,7 @@ bool OTControl::sendDiscovery() {
     haDisc.setTemperatureStateTemplate(F("{{ value_json.heatercircuit[0].roomsetpoint }}"));
     haDisc.setOptimistic(true);
     haDisc.setRetain(true);
+    haDisc.setModes(0x02);
     if (!heatingConfig[0].chOn)
         haDisc.clearDoc();
     discFlag &= haDisc.publish();
@@ -822,6 +895,7 @@ bool OTControl::sendDiscovery() {
     haDisc.setTemperatureStateTemplate(F("{{ value_json.heatercircuit[1].roomsetpoint }}"));
     haDisc.setOptimistic(true);
     haDisc.setRetain(true);
+    haDisc.setModes(0x02);
     if (!heatingConfig[1].chOn)
         haDisc.clearDoc();
     discFlag &= haDisc.publish();
@@ -878,6 +952,24 @@ bool OTControl::sendDiscovery() {
     haDisc.createSwitch(F("override DHW"), Mqtt::TOPIC_OVERRIDEDHW);
     discFlag &= haDisc.publish(ovr);
 
+    haDisc.createSensor(F("integrator state 1"), F("integ_state_ch1"));
+    haDisc.setValueTemplate(F("{{ value_json.heatercircuit[0].integState }}"));
+    haDisc.setUnit(F("K"));
+    discFlag &= haDisc.publish(heatingConfig[0].roomTempCompI > 0);
+
+    haDisc.createSensor(F("integrator state 2"), F("integ_state_ch2"));
+    haDisc.setValueTemplate(F("{{ value_json.heatercircuit[1].integState }}"));
+    haDisc.setUnit(F("K"));
+    discFlag &= haDisc.publish(heatingConfig[1].roomTempCompI > 0);
+
+    haDisc.createBinarySensor(F("suspend CH1"), F("susp1"), "");
+    haDisc.setValueTemplate(F("{{ 'ON' if value_json.heatercircuit[0].suspended else 'OFF' }}"));
+    discFlag &= haDisc.publish(heatingConfig[0].enableHyst);
+
+    haDisc.createBinarySensor(F("suspend CH2"), F("susp2"), "");
+    haDisc.setValueTemplate(F("{{ 'ON' if value_json.heatercircuit[1].suspended else 'OFF' }}"));
+    discFlag &= haDisc.publish(heatingConfig[1].enableHyst);
+
     return discFlag;
 }
 
@@ -908,19 +1000,24 @@ void OTControl::setConfig(JsonObject &config) {
 
     for (int i=0; i<sizeof(heatingConfig) / sizeof(heatingConfig[0]); i++) {
         JsonObject hpObj = config[F("heating")][i];
-        heatingConfig[i].chOn = hpObj[F("chOn")];
-        heatingConfig[i].roomSet = hpObj[F("roomsetpoint")][F("temp")] | 21.0; // default room set point
-        heatingConfig[i].flowMax = hpObj[F("flowMax")] | 40;
-        heatingConfig[i].exponent = hpObj[F("exponent")] | 1.0;
-        heatingConfig[i].gradient = hpObj[F("gradient")] | 1.0;
-        heatingConfig[i].offset = hpObj[F("offset")] | 0;
-        heatingConfig[i].flow = hpObj[F("flow")] | 35;
-        heatingConfig[i].roomTempComp = hpObj[F("roomtempcomp")] | 0;
-        heatingConfig[i].flow = heatingConfig[i].flow;
+        HeatingConfig &hc = heatingConfig[i];
+        hc.chOn = hpObj[F("chOn")];
+        hc.roomSet = hpObj[F("roomsetpoint")][F("temp")] | 21.0; // default room set point
+        hc.flowMax = hpObj[F("flowMax")] | 40;
+        hc.exponent = hpObj[F("exponent")] | 1.0;
+        hc.gradient = hpObj[F("gradient")] | 1.0;
+        hc.offset = hpObj[F("offset")] | 0;
+        hc.flow = hpObj[F("flow")] | 35;
+        hc.roomTempComp = hpObj[F("roomtempcomp")] | 0;
+        hc.roomTempCompI = hpObj[F("roomtempcompI")] | 0.0;
+        hc.hysteresis = hpObj[F("hysteresis")] | 0.1;
+        hc.enableHyst = hpObj[F("enableHyst")] | false;
         
-        heatingCtrl[i].flowTemp = heatingConfig[i].flow;
-        heatingCtrl[i].chOn = heatingConfig[i].chOn;
+        heatingCtrl[i].flowTemp = hc.flow;
+        heatingCtrl[i].chOn = hc.chOn;
         heatingCtrl[i].overrideFlow = hpObj[F("overrideFlow")] | false;
+        if (hc.roomTempCompI == 0)
+            heatingCtrl[i].piCtrl.integState = 0;
     }
 
     JsonObject ventObj = config[F("vent")];
