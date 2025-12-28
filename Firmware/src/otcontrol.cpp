@@ -32,7 +32,7 @@ const struct {
     uint16_t value;
 } loopbackTestData[] PROGMEM = {
     {OpenThermMessageID::Status,                    0x000E},
-    {OpenThermMessageID::MConfigMMemberIDcode,  0x0103}, // Signal high power available
+    {OpenThermMessageID::MConfigMMemberIDcode,      0x0103}, // Signal high power available
     {OpenThermMessageID::SConfigSMemberIDcode,      0x2511}, // DHW present, cooling present, CH2 present, SP capable
     {OpenThermMessageID::ASFflags,                  0x0000}, // no error flags, oem error code 0
     {OpenThermMessageID::RBPflags,                  0x0101},

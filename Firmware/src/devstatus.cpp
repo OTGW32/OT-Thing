@@ -5,7 +5,9 @@
 #include "otcontrol.h"
 #include "sensors.h"
 #include "httpUpdate.h"
-
+#ifdef NODO
+#include <EthernetESP32.h>
+#endif
 DevStatus devstatus;
 
 DevStatus::DevStatus():
@@ -49,12 +51,14 @@ JsonDocument &DevStatus::buildDoc() {
     jwifi[F("ipsta")] = WiFi.localIP().toString();
     jwifi[F("mac")] = WiFi.macAddress();
     jwifi[F("hostname")] = WiFi.getHostname();
-    if (WIRED_ETHERNET_PRESENT)
+    jwifi[F("sta_ssid")] = WiFi.SSID();
+    jwifi[F("rssi")] = WiFi.RSSI();
+#ifdef NODO
+    if (WIRED_ETHERNET_PRESENT) {
         jwifi[F("sta_ssid")] = "WIRED";
-    else {
-        jwifi[F("sta_ssid")] = WiFi.SSID();
-        jwifi[F("rssi")] = WiFi.RSSI();
-    }
+        jwifi[F("ipsta")] = Ethernet.localIP().toString();
+    } 
+#endif
     JsonObject jmqtt = doc[F("mqtt")].to<JsonObject>();
     jmqtt[F("connected")] = mqtt.connected();
     jmqtt[F("basetopic")] = mqtt.getBaseTopic();
