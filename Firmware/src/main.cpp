@@ -91,7 +91,7 @@ void displayNetworkStatus(unsigned long now) {
     oled_display.ssd1306_command(SSD1306_SETCONTRAST);
     oled_display.ssd1306_command(1);
     static unsigned long on_time = 20;
-    if ( digitalRead(GPIO_BOOT_BUTTON) ){
+    if ( !digitalRead(GPIO_BOOT_BUTTON) ){
       oled_display.ssd1306_command(SSD1306_DISPLAYON);
       on_time = now;
     } else {
