@@ -36,6 +36,7 @@ extern bool WIRED_ETHERNET_PRESENT;
 // OLED display width and height
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
+#define LED_BRIGHTNESS 5 // 0-255 
 #else
 #define GPIO_CONFIG_BUTTON 0
 #define GPIO_STATUS_LED 8
@@ -57,7 +58,7 @@ inline void setLedOTRed(const bool on) {
         digitalWrite(GPIO_OTRED_LED,1);
     } else {
     ledcAttachChannel(GPIO_OTRED_LED, 5000, 8, 2); 
-    ledcWrite(GPIO_OTRED_LED, 250); // dim
+    ledcWrite(GPIO_OTRED_LED, 255-LED_BRIGHTNESS); // dim
     }
 #else
     digitalWrite(GPIO_OTRED_LED, !on);
@@ -71,7 +72,7 @@ inline void setLedOTGreen(const bool on) {
         digitalWrite(GPIO_OTGREEN_LED,0);
     } else {
     ledcAttachChannel(GPIO_OTGREEN_LED, 5000, 8, 1); 
-    ledcWrite(GPIO_OTGREEN_LED, 10); // dim
+    ledcWrite(GPIO_OTGREEN_LED, LED_BRIGHTNESS); // dim
     }
 #else
     digitalWrite(GPIO_OTGREEN_LED, !on);
@@ -85,7 +86,7 @@ inline void setLedStatus(const bool on) {
         digitalWrite(GPIO_STATUS_LED,1);
     } else {
     ledcAttachChannel(GPIO_STATUS_LED, 5000, 8, 0); 
-    ledcWrite(GPIO_STATUS_LED, 250); // dim
+    ledcWrite(GPIO_STATUS_LED, 255-LED_BRIGHTNESS); // dim
     }
 #else
     digitalWrite(GPIO_STATUS_LED, !on);
