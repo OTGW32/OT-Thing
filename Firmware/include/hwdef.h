@@ -55,7 +55,7 @@ inline void setLedOTRed(const bool on) {
 }
 
 inline void setLedOTGreen(const bool on) {
-    digitalWrite(GPIO_OTGREEN_LED, on);
+    digitalWrite(GPIO_OTGREEN_LED, !on);
 }
 
 inline void setLedStatus(const bool on) {
