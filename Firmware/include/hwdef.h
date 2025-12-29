@@ -51,13 +51,43 @@ extern bool WIRED_ETHERNET_PRESENT;
 #endif
 
 inline void setLedOTRed(const bool on) {
+#ifdef NODO
+    if (!on) {
+        pinMode(GPIO_OTRED_LED,OUTPUT);
+        digitalWrite(GPIO_OTRED_LED,1);
+    } else {
+    ledcAttachChannel(GPIO_OTRED_LED, 5000, 8, 2); 
+    ledcWrite(GPIO_OTRED_LED, 250); // dim
+    }
+#else
     digitalWrite(GPIO_OTRED_LED, !on);
+#endif
 }
 
 inline void setLedOTGreen(const bool on) {
+#ifdef NODO
+    if (on) {
+        pinMode(GPIO_OTGREEN_LED,OUTPUT);
+        digitalWrite(GPIO_OTGREEN_LED,0);
+    } else {
+    ledcAttachChannel(GPIO_OTGREEN_LED, 5000, 8, 1); 
+    ledcWrite(GPIO_OTGREEN_LED, 10); // dim
+    }
+#else
     digitalWrite(GPIO_OTGREEN_LED, !on);
+#endif
 }
 
 inline void setLedStatus(const bool on) {
+#ifdef NODO
+    if (!on) {
+        pinMode(GPIO_STATUS_LED,OUTPUT);
+        digitalWrite(GPIO_STATUS_LED,1);
+    } else {
+    ledcAttachChannel(GPIO_STATUS_LED, 5000, 8, 0); 
+    ledcWrite(GPIO_STATUS_LED, 250); // dim
+    }
+#else
     digitalWrite(GPIO_STATUS_LED, !on);
+#endif
 }
