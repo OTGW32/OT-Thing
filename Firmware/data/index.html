@@ -2015,7 +2015,7 @@
             function configToUi() {
                 _("#hostname").value = config.hostname || "otthing";
                 _("#haPrefix").value = config.haPrefix || "homeassistant";
-                _("#selTimezone").value = config.timezone || 3600;
+                _("#selTimezone").value = (config.timezone !== undefined) ? config.timezone : 3600;
                 _("#haName").value = config.haName || "OTthing";
                 let otradio = _('input[name="otMode"][value="' + config.otMode + '"]');
                 if (otradio !== undefined) {
