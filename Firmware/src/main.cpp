@@ -24,6 +24,10 @@
 #include <EthernetESP32.h>
 SPIClass SPI1(FSPI);
 W5500Driver driver(GPIO_SPI_CS, GPIO_SPI_INT, GPIO_SPI_RST);
+int pageno = 0;
+bool armButton = false;
+char buffer[64]; 
+byte ethMac[6];
 #endif
 Ticker statusLedTicker;
 volatile uint16_t statusLedData = 0x8000;
@@ -76,33 +80,42 @@ class scanCallbacks : public NimBLEScanCallbacks {
 
 #ifdef NODO
 Adafruit_SSD1306 oled_display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-byte ethMac[6];
-// ** New function for display status **
+
 void displayNetworkStatus(unsigned long now) {
-    if (!OLED_PRESENT)
-        return; // Skip if no display detected
-    oled_display.clearDisplay();
-    oled_display.setTextSize(1);
-    oled_display.setTextColor(SSD1306_WHITE);
-    // 1. Create a fixed-size buffer
-    char buffer[64]; 
+  if (!OLED_PRESENT)
+      return; // Skip if no display detected
 
-    oled_display.clearDisplay();
-    oled_display.ssd1306_command(SSD1306_SETCONTRAST);
-    oled_display.ssd1306_command(1);
-    static unsigned long on_time = 20;
-    if ( !digitalRead(GPIO_BOOT_BUTTON) ){
+  static unsigned long on_time = 20;
+
+  if ( !digitalRead(GPIO_BOOT_BUTTON) ) { // button pressed
+    if (!pageno) { // display off so turn on
       oled_display.ssd1306_command(SSD1306_DISPLAYON);
+      oled_display.setTextSize(1);
+      oled_display.setTextColor(SSD1306_WHITE);
       on_time = now;
-    } else {
-      if ( on_time > 10 && (now-on_time) > 10000 ){
-        oled_display.ssd1306_command(SSD1306_DISPLAYOFF);
-        on_time = 0;
-      }
+      pageno = 1;
+    } else if (armButton) { // request next page
+      on_time = now; // reset timeout 
+      pageno++;
+      armButton = false;
     }
-    oled_display.setCursor(0, 0);
+  } else { // button not pressed
+    if ( on_time > 10 && (now-on_time) > 10000 ) { // display timeout
+      oled_display.ssd1306_command(SSD1306_DISPLAYOFF);
+      on_time = 0;
+      pageno = 0;
+      armButton = false;
+    } else { // display already on
+      armButton = true; // ready for more pages
+    }
+  }
 
-    if (configMode) {
+  if (pageno) { // display on, needs updating
+    oled_display.clearDisplay();
+    oled_display.setCursor(0, 0);
+    
+    if (pageno==1) {
+      if (configMode) { // in config mode
         // Using snprintf to format the string into the buffer
         snprintf(buffer, sizeof(buffer), "SSID: %s", WiFi.softAPSSID().c_str());
         oled_display.println(buffer);
@@ -110,34 +123,40 @@ void displayNetworkStatus(unsigned long now) {
         oled_display.setCursor(0, 10);
         snprintf(buffer, sizeof(buffer), "http://%s/", WiFi.softAPIP().toString().c_str());
         oled_display.println(buffer);
-
-    } else if (WIRED_ETHERNET_PRESENT) {
-        oled_display.println(F("Wired Network"));
-        
-        oled_display.setCursor(0, 10);
-        snprintf(buffer, sizeof(buffer), "IP: %s", Ethernet.localIP().toString().c_str());
-        oled_display.println(buffer);
-
-    } else {
-        snprintf(buffer, sizeof(buffer), "WiFi: %s", WiFi.SSID().c_str());
-        oled_display.println(buffer);
-
-        oled_display.setCursor(0, 10);
-        if (WiFi.isConnected()) {
-            snprintf(buffer, sizeof(buffer), "IP: %s", WiFi.localIP().toString().c_str());
+      } else { // not config mode
+        if (WIRED_ETHERNET_PRESENT) { // wired
+            oled_display.println(F("Wired Network"));
+            
+            oled_display.setCursor(0, 10);
+            snprintf(buffer, sizeof(buffer), "IP: %s", Ethernet.localIP().toString().c_str());
             oled_display.println(buffer);
-        } else {
-            oled_display.println(F("Connecting..."));
+        } else { // wifi
+          snprintf(buffer, sizeof(buffer), "WiFi: %s", WiFi.SSID().c_str());
+          oled_display.println(buffer);
+
+          oled_display.setCursor(0, 10);
+          if (WiFi.isConnected()) {
+              snprintf(buffer, sizeof(buffer), "IP: %s", WiFi.localIP().toString().c_str());
+              oled_display.println(buffer);
+          } else {
+              oled_display.println(F("Connecting..."));
+          }
         }
+        oled_display.setCursor(0,30);
+        oled_display.println("Hold Boot for more");
+      } // config mode
+    } else { // pageno > 1
+      snprintf(buffer, sizeof(buffer), "Page %d", pageno);
+      oled_display.println(buffer);
     }
-
-    // --- Third Line: Memory Status ---
-    oled_display.setCursor(0, 20);
+    // --- Memory Status ---
+    // oled_display.setCursor(0, 20);
     // %u is for unsigned int, %lu is for long unsigned (safer for 32-bit heap values)
-    snprintf(buffer, sizeof(buffer), "%lu bytes free", (unsigned long)ESP.getFreeHeap());
-    oled_display.println(buffer);
-
+    // snprintf(buffer, sizeof(buffer), "%lu bytes free", (unsigned long)ESP.getFreeHeap());
+    // oled_display.println(buffer);
+    
     oled_display.display();
+  }
 }
 #endif // NODO
 
@@ -169,7 +188,7 @@ void setup() {
 
       // Print message
       oled_display.println("Nodo OTGW32 V1.0.0");
-      oled_display.setCursor(0, 10);          // Position on screen
+      oled_display.setCursor(0, 20);          // Position on screen
       oled_display.println("Hold Boot for screen");
       // pretty flame
       oled_display.drawBitmap(56, 34, flame_bitmap, 16, 16, WHITE);
