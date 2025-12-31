@@ -53,12 +53,15 @@ extern bool WIRED_ETHERNET_PRESENT;
 
 inline void setLedOTRed(const bool on) {
 #ifdef NODO
+    static int init = 0;
+    if ( !init ) {
+      ledcAttachChannel(GPIO_OTRED_LED, 5000, 8, 2); 
+      init = 1;
+    }
     if (!on) {
-        pinMode(GPIO_OTRED_LED,OUTPUT);
-        digitalWrite(GPIO_OTRED_LED,1);
+      ledcWrite(GPIO_OTRED_LED, 255);
     } else {
-    ledcAttachChannel(GPIO_OTRED_LED, 5000, 8, 2); 
-    ledcWrite(GPIO_OTRED_LED, 255-LED_BRIGHTNESS); // dim
+      ledcWrite(GPIO_OTRED_LED, 255-LED_BRIGHTNESS); // dim
     }
 #else
     digitalWrite(GPIO_OTRED_LED, !on);
@@ -67,11 +70,14 @@ inline void setLedOTRed(const bool on) {
 
 inline void setLedOTGreen(const bool on) {
 #ifdef NODO
+    static int init = 0;
+    if ( !init ) {
+      ledcAttachChannel(GPIO_OTGREEN_LED, 5000, 8, 1); 
+      init = 1;
+    }
     if (on) {
-        pinMode(GPIO_OTGREEN_LED,OUTPUT);
-        digitalWrite(GPIO_OTGREEN_LED,0);
+    ledcWrite(GPIO_OTGREEN_LED, 0);
     } else {
-    ledcAttachChannel(GPIO_OTGREEN_LED, 5000, 8, 1); 
     ledcWrite(GPIO_OTGREEN_LED, LED_BRIGHTNESS); // dim
     }
 #else
@@ -81,11 +87,14 @@ inline void setLedOTGreen(const bool on) {
 
 inline void setLedStatus(const bool on) {
 #ifdef NODO
+    static int init = 0;
+    if ( !init ) {
+      ledcAttachChannel(GPIO_STATUS_LED, 5000, 8, 0); 
+      init = 1;
+    }
     if (!on) {
-        pinMode(GPIO_STATUS_LED,OUTPUT);
-        digitalWrite(GPIO_STATUS_LED,1);
+      ledcWrite(GPIO_STATUS_LED, 255); // dim
     } else {
-    ledcAttachChannel(GPIO_STATUS_LED, 5000, 8, 0); 
     ledcWrite(GPIO_STATUS_LED, 255-LED_BRIGHTNESS); // dim
     }
 #else
