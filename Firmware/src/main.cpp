@@ -24,8 +24,6 @@
 #include <EthernetESP32.h>
 SPIClass SPI1(FSPI);
 W5500Driver driver(GPIO_SPI_CS, GPIO_SPI_INT, GPIO_SPI_RST);
-int pageno = 0;
-bool armButton = false;
 char buffer[64]; 
 byte ethMac[6];
 #endif
@@ -79,6 +77,17 @@ class scanCallbacks : public NimBLEScanCallbacks {
 */
 
 #ifdef NODO
+QueueHandle_t button_press_queue;
+void IRAM_ATTR nodo_boot_button_interrupt(void *arg) {
+  if ( gpio_get_level((gpio_num_t)GPIO_BOOT_BUTTON) == 0 ){
+    int64_t t = esp_timer_get_time();
+    xQueueSendFromISR(button_press_queue, &t, NULL);
+  }
+}
+const int number_of_pages = 3;
+int64_t last_c = 0;
+int pageno = 0;
+
 Adafruit_SSD1306 oled_display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 void displayNetworkStatus(unsigned long now) {
@@ -87,26 +96,37 @@ void displayNetworkStatus(unsigned long now) {
 
   static unsigned long on_time = 20;
 
-  if ( !digitalRead(GPIO_BOOT_BUTTON) ) { // button pressed
+  int64_t c = 0;
+  while (xQueueReceive(button_press_queue, &c, 0)) {
+
+    // Skip this press.
+    if ( (c - last_c ) < 300000 ){
+      Serial.println("Button press ignored\n");
+      last_c = c;
+      continue;
+    }
+    last_c = c;
+    Serial.println("Button press detected\n");
     if (!pageno) { // display off so turn on
       oled_display.ssd1306_command(SSD1306_DISPLAYON);
       oled_display.setTextSize(1);
       oled_display.setTextColor(SSD1306_WHITE);
       on_time = now;
       pageno = 1;
-    } else if (armButton) { // request next page
+    } else { // request next page
       on_time = now; // reset timeout 
       pageno++;
-      armButton = false;
+      if ( pageno >= number_of_pages ) {
+        pageno = 1;
+      }
+      Serial.printf("Page num: %u\n", pageno);
     }
-  } else { // button not pressed
+  } 
+  if ( c == 0 ){ // button not pressed
     if ( on_time > 10 && (now-on_time) > 10000 ) { // display timeout
       oled_display.ssd1306_command(SSD1306_DISPLAYOFF);
       on_time = 0;
       pageno = 0;
-      armButton = false;
-    } else { // display already on
-      armButton = true; // ready for more pages
     }
   }
 
@@ -197,6 +217,13 @@ void setup() {
       OLED_PRESENT = true;
     }
   }
+  button_press_queue = xQueueCreate(10, sizeof(int64_t));
+  gpio_set_direction((gpio_num_t)GPIO_BOOT_BUTTON, GPIO_MODE_INPUT);
+  gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+  gpio_set_intr_type((gpio_num_t)GPIO_BOOT_BUTTON, GPIO_INTR_NEGEDGE);
+  gpio_intr_enable((gpio_num_t)GPIO_BOOT_BUTTON);
+  gpio_isr_handler_add((gpio_num_t)GPIO_BOOT_BUTTON, nodo_boot_button_interrupt,
+                       NULL);
   // Initialize Ethernet
   SPI1.begin(GPIO_SPI_SCK, GPIO_SPI_MISO, GPIO_SPI_MOSI);
   driver.setSPI(SPI1);
@@ -307,7 +334,7 @@ void loop() {
     OneWireNode::loop();
 #ifdef NODO
     static unsigned long lastDisplayUpdate = 0;
-    if (now - lastDisplayUpdate > 1000) { 
+    if (now - lastDisplayUpdate > 1000 || uxQueueMessagesWaiting(button_press_queue)) { 
         displayNetworkStatus(now); 
         lastDisplayUpdate = now;
     }
