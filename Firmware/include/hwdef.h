@@ -77,7 +77,7 @@ inline void setLedOTGreen(const bool on) {
       ledcOutputInvert(GPIO_OTGREEN_LED, false);
       init = 1;
     }
-    if (!on) {
+    if (on) { // off by default
       ledcWrite(GPIO_OTGREEN_LED, 0);
     } else {
       ledcWrite(GPIO_OTGREEN_LED, LED_BRIGHTNESS); // dim
