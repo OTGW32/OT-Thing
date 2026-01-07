@@ -147,8 +147,9 @@ protected:
     bool sendDiscovery(String field, const bool addBaseName = false);
     const char* getName() const;
     bool discFlag;
+    const char *haName {nullptr};
 public:
-    OTValue(const OpenThermMessageID id, const int interval);
+    OTValue(const OpenThermMessageID id, const int interval, const char *haName = nullptr);
     bool process();
     OpenThermMessageID getId() const;
     void setValue(uint16_t val);
@@ -168,7 +169,7 @@ class OTValueu16: public OTValue {
 private:
     void getValue(JsonObject &obj) const;
 public:
-    OTValueu16(const OpenThermMessageID id, const int interval);
+    OTValueu16(const OpenThermMessageID id, const int interval, const char *haName = nullptr);
     uint16_t getValue() const;
 };
 
@@ -192,7 +193,6 @@ public:
 class OTValueFloatTemp: public OTValueFloat {
 private:
     bool sendDiscovery();
-    const char *haName;
 public:
     OTValueFloatTemp(const OpenThermMessageID id, const char *haName);
 };
@@ -227,7 +227,7 @@ private:
     };
 public:    
     OTValueStatus();
-    bool getMode(const uint8_t channel);
+    bool getChActive(const uint8_t channel);
 };
 
 class OTValueMasterStatus: public OTValueFlags {
@@ -282,8 +282,12 @@ private:
         {12, "master_lowoff_pumpctrl",  "Master pump ctrl allowed", nullptr},
         {13, "ch2_present",             "CH2 present",              nullptr}
     };
+protected:
+    bool sendDiscovery() override;
 public:    
     OTValueSlaveConfigMember();
+    bool hasDHW() const;
+    bool hasCh2() const;
 };
 
 
@@ -320,7 +324,6 @@ class OTValueProductVersion: public OTValue {
 private:
     void getValue(JsonObject &obj) const;
     bool sendDiscovery();
-    const char *haName;
 public:    
     OTValueProductVersion(const OpenThermMessageID id, const int interval, const char *haName);
 };

@@ -29,7 +29,8 @@ static struct {
     {Mqtt::TOPIC_VENTENABLE, "ventEnable"},
     {Mqtt::TOPIC_OPENBYPASS, "openBypass"},
     {Mqtt::TOPIC_AUTOBYPASS, "autoBypass"},
-    {Mqtt::TOPIC_FREEVENTENABLE, "freeVentEnable"}
+    {Mqtt::TOPIC_FREEVENTENABLE, "freeVentEnable"},
+    {Mqtt::TOPIC_MAXMODULATION, "maxModulation"}
 };
 
 Mqtt mqtt;
@@ -143,7 +144,8 @@ void Mqtt::loop() {
         if (!discFlag) {
             discFlag = true;
             discFlag &= otcontrol.sendDiscovery();
-            discFlag &= OneWireNode::sendDiscovery();
+            discFlag &= OneWireNode::sendDiscoveryAll();
+            discFlag &= BLESensor::sendDiscoveryAll();
         }
 
         if ((millis() - lastStatus) > 5000) {
@@ -302,6 +304,12 @@ void Mqtt::onMessage(const char *topic, String &payload) {
 
     case TOPIC_FREEVENTENABLE:
         break;
+
+    case TOPIC_MAXMODULATION: {
+        int i= payload.toInt();
+        otcontrol.setMaxMod(i);
+        break;
+    }
 
     default:
         break;

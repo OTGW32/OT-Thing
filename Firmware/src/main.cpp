@@ -14,7 +14,6 @@
 #include "HADiscLocal.h"
 #include <esp_wifi.h>
 #include "time.h"
-//#include <NimBLEDevice.h>
 
 #ifdef DEBUG
 #include <ArduinoOTA.h>
@@ -68,22 +67,7 @@ void wifiEvent(WiFiEvent_t event) {
     }
 }
 
-/*
-class scanCallbacks : public NimBLEScanCallbacks {
-    void onDiscovered(const NimBLEAdvertisedDevice* advertisedDevice) override {
-        Serial.println("Discovered Device: %s\n", advertisedDevice->toString().c_str());
-    }
 
-    void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
-        Serial.println("Device result: %s\n", advertisedDevice->toString().c_str());
-    }
-
-    void onScanEnd(const NimBLEScanResults& results, int reason) override {
-        Serial.println("Scan ended reason = %d; restarting scan\n", reason);
-        NimBLEDevice::getScan()->start(scanTimeMs, false, true);
-    }
-} scanCallbacks;
-*/
 
 #ifdef NODO
 QueueHandle_t button_press_queue;
@@ -370,24 +354,18 @@ void setup() {
 #ifdef NODO
   }
 #endif
+    AddressableSensor::begin();
   OneWireNode::begin();
+    BLESensor::begin();
   haDisc.begin();
   mqtt.begin();
   devconfig.begin();
   configTime(devconfig.getTimezone(), 3600, PSTR("pool.ntp.org"));
 
-  portal.begin(configMode);
+    portal.begin(configMode);
+    command.begin();
 
-  command.begin();
-/*
-    NimBLEDevice::init("");                         // Initialize the device, you can specify a device name if you want.
-    NimBLEScan* pBLEScan = NimBLEDevice::getScan(); // Create the scan object.
-    pBLEScan->setScanCallbacks(&scanCallbacks, false); // Set the callback for when devices are discovered, no duplicates.
-    pBLEScan->setActiveScan(true);          // Set active scanning, this will get more data from the advertiser.
-    pBLEScan->setMaxResults(0);             // Do not store the scan results, use callback only.
-    pBLEScan->start(30000UL, false, true); // duration, not a continuation of last scan, restart to get all devices again.
-  */  
-#ifdef DEBUG
+    #ifdef DEBUG
     ArduinoOTA.begin();
 #endif
 }
