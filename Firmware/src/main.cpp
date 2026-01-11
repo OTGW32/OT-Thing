@@ -14,9 +14,10 @@
 #include "HADiscLocal.h"
 #include <esp_wifi.h>
 #include "time.h"
+#include "main.h"
 
 #ifdef DEBUG
-#include <ArduinoOTA.h>
+    #include <ArduinoOTA.h>
 #endif
 
 #ifdef NODO
@@ -30,6 +31,21 @@ byte ethMac[6];
 Ticker statusLedTicker;
 volatile uint16_t statusLedData = 0x8000;
 bool configMode = false;
+
+#ifdef DEBUG
+    NimBLECharacteristic *bleSerialTx;
+    volatile bool bleClientConnected = false;
+
+class ServerCallbacks : public NimBLEServerCallbacks {
+    void onConnect(NimBLEServer* server, NimBLEConnInfo& connInfo) override {
+        bleClientConnected = true;
+    }
+
+    void onDisconnect(NimBLEServer* server, NimBLEConnInfo& connInfo, int reason) override {
+        bleClientConnected = false;
+    }
+};
+#endif
 
 // Variables for dynamic network management
 unsigned long lastNetworkCheck = 0;
@@ -330,25 +346,35 @@ void setup() {
 
   statusLedTicker.attach(0.2, statusLedLoop);
 
-  // Wifi needs to be initialized.
-  WiFi.mode(WIFI_STA);
-  // Read out the config from NVS
-  wifi_config_t conf;
-  esp_err_t err = esp_wifi_get_config(WIFI_IF_STA, &conf);
-  // If read is successfull and an ssid is specified we assume its stored
-  bool noStoredWifi = (err != ESP_OK || conf.sta.ssid[0] == '\0');
+    configMode = digitalRead(GPIO_CONFIG_BUTTON) == 0;
+    if (configMode)
+        statusLedData = 0xA000;
 
-  configMode = (digitalRead(GPIO_CONFIG_BUTTON) == 0) || noStoredWifi;
-  if (configMode) {
-    statusLedData = 0xA000;
-  } else {
-    WiFi.onEvent(wifiEvent); // Register event for auto-reconnect logic
-  }
+    Serial.begin();
+    Serial.setTxTimeoutMs(100);
 
+#ifdef DEBUG
+    //auto bleSrv = NimBLEDevice::createServer();
+    //auto bleSrvc = bleSrv->createService("6E400001-B5A3-F393-E0A9-E50E24DCCA9E");
+    /*bleSerialTx = bleSrvc->createCharacteristic(
+        "6E400003-B5A3-F393-E0A9-E50E24DCCA9E",
+        NIMBLE_PROPERTY::NOTIFY
+    );
+    auto bleSerialRx = bleSrvc->createCharacteristic(
+        "6E400002-B5A3-F393-E0A9-E50E24DCCA9E",
+        NIMBLE_PROPERTY::WRITE
+    );
+    bleSrvc->start();
+    NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
+    adv->addServiceUUID(bleSrvc->getUUID());
+    //adv->setScanResponse(true);
+    adv->start();*/
+#endif
 #ifdef NODO
   // Only start WiFi if Ethernet isn't already running
   if (WIRED_ETHERNET_PRESENT == false) {
 #endif
+    WiFi.onEvent(wifiEvent);
     WiFi.setSleep(false);
     WiFi.begin();
 #ifdef NODO
@@ -365,7 +391,7 @@ void setup() {
     portal.begin(configMode);
     command.begin();
 
-    #ifdef DEBUG
+#ifdef DEBUG
     ArduinoOTA.begin();
 #endif
 }

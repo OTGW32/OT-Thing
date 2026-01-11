@@ -109,8 +109,9 @@ private:
         double hysteresis;
         struct {
             bool enabled;
-            double p; // P K/K
-            double i; // I 1/h
+            double p; // Kp K/K
+            double i; // Ki 1/h
+            double boost; // Kb K/K
         } roomComp;
     } heatingConfig[2];
     struct HeatingControl {
@@ -121,6 +122,7 @@ private:
         struct PiCtrl {
             bool init { false };
             double roomTempFilt;
+            double rspPrev; // previous room setpoint
             double integState {0}; // state of integrator / K
             double deltaT {0};
         } piCtrl;
@@ -147,6 +149,26 @@ private:
         bool overrideDhw;
         uint8_t maxModulation;
     } boilerCtrl;
+    struct FlameRatio {
+        void loop();
+        uint8_t getDuty() const;
+        double getFreq() const;
+    private:
+        static const uint8_t FLAMERAT_BUFSIZE = 180;
+        void update();
+        void set(const bool flame);
+        bool init {false};
+        bool currentFlame {false};
+        uint32_t lastEdge {0};
+        uint32_t lastInc {0};
+        uint8_t idx {0};
+        struct Ringbuf {
+            void update(const uint8_t idx);
+            uint8_t current {0};
+            uint8_t buf[FLAMERAT_BUFSIZE];
+            uint32_t sum {0};
+        } on, cycles;
+    } flameRatio;
     bool discFlag {true};
     OTWRSetDhw setDhwRequest;
     OTWRSetBoilerTemp setBoilerRequest[2];

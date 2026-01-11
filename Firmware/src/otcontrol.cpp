@@ -52,6 +52,9 @@ const struct {
     {OpenThermMessageID::SuccessfulBurnerStarts,    9999},
     {OpenThermMessageID::CHPumpStarts,              7777},
     {OpenThermMessageID::BurnerOperationHours,      8888},
+    {OpenThermMessageID::CHPumpOperationHours,      6666},
+    {OpenThermMessageID::DHWPumpValveOperationHours,5555},
+    {OpenThermMessageID::DHWBurnerOperationHours,   2222},
     {OpenThermMessageID::OpenThermVersionSlave,     nib(2, 2)},
     {OpenThermMessageID::SlaveVersion,              nib(4, 4)},
     {OpenThermMessageID::StatusVentilationHeatRecovery, 0x001E},
@@ -71,7 +74,6 @@ const struct {
     {OpenThermMessageID::UnsuccessfulBurnerStarts,  19},
     {OpenThermMessageID::FlameSignalTooLowNumber,   4},
     {OpenThermMessageID::OEMDiagnosticCode,         123},
-    {OpenThermMessageID::DHWBurnerOperationHours,   196},
     {OpenThermMessageID::TboilerHeatExchanger,      floatToOT(48.5)},
     {OpenThermMessageID::BoilerFanSpeedSetpointAndActual, nib(20, 21)},
     {OpenThermMessageID::FlameCurrent,              floatToOT(96.8)},
@@ -145,6 +147,65 @@ void OTControl::OTInterface::sendResponse(const unsigned long msg, const char so
         hal.process();
         yield();
     }
+}
+
+
+void OTControl::FlameRatio::set(const bool flame) {
+    if (currentFlame != flame) {
+        if (!init) {
+            // this is first flame on within 1st minute
+            init = true;
+            memset(on.buf, 60, sizeof(on.buf));
+            on.sum = FLAMERAT_BUFSIZE * 60UL;
+        }
+
+        if (flame)
+            cycles.current++;
+        
+        update();
+        currentFlame = flame;
+    }
+}
+
+uint8_t OTControl::FlameRatio::getDuty() const {
+    return 100 * on.sum / FLAMERAT_BUFSIZE / 60;
+}
+
+double OTControl::FlameRatio::getFreq() const {
+    return round(cycles.sum / (FLAMERAT_BUFSIZE / 60.0) * 10) / 10.0;
+}
+
+void OTControl::FlameRatio::update() {
+    if (currentFlame) {
+        uint8_t diff = 0;
+        diff = (millis() - lastEdge) / 1000;
+        on.current += diff;
+    }
+    lastEdge = millis();
+}
+
+void OTControl::FlameRatio::loop() {
+    OTValueStatus *ots = static_cast<OTValueStatus*>(OTValue::getSlaveValue(OpenThermMessageID::Status));
+    if (ots)
+        set(ots->getFlame());
+
+    if (millis() >= lastInc + 60000) {
+        update();
+
+        on.update(idx);
+        cycles.update(idx);
+        
+        idx = (idx + 1) % FLAMERAT_BUFSIZE;
+        lastInc = millis();
+        init = true;
+    }
+}
+
+void OTControl::FlameRatio::Ringbuf::update(const uint8_t idx) {
+    sum -= buf[idx]; // remove old value
+    buf[idx] = current;
+    sum += current;
+    current = 0;
 }
 
 
@@ -257,6 +318,7 @@ double OTControl::getFlow(const uint8_t channel) {
 void OTControl::loop() {
     master.hal.process();
     slave.hal.process();
+    flameRatio.loop();
 
     if (millis() > nextPiCtrl) {
         loopPiCtrl();
@@ -423,7 +485,7 @@ void OTControl::loopPiCtrl() {
             continue;
         }
         
-        double rt, rsp;
+        double rt, rsp; // roomtemp, roomsetpoint
 
         if (!heatingConfig[i].enableHyst)
             heatingCtrl[i].suspended = false;
@@ -437,7 +499,6 @@ void OTControl::loopPiCtrl() {
             pictrl.roomTempFilt = 0.1 * rt + 0.9 * pictrl.roomTempFilt;
         else
             pictrl.roomTempFilt = rt;
-
         pictrl.init = true;
 
         if (!roomSetPoint[i].get(rsp))
@@ -462,18 +523,31 @@ void OTControl::loopPiCtrl() {
         double p = heatingConfig[i].roomComp.p * e; // Kp * e
         
         // integral part of PI controller
-        
-        if ( (ots != nullptr) && (ots->getChActive(i)) )
-            pictrl.integState += heatingConfig[i].roomComp.i * e * PI_INTERVAL / 3600.0; // Ki * e * ts, ts = 60 s
+        const bool setJump = fabs(rsp - pictrl.rspPrev) > 0.3;
+        pictrl.rspPrev = rsp;
+        if ( (ots != nullptr) && ots->getChActive(i) && !heatingCtrl[i].suspended ) {
+            if (!setJump)
+                if (e > 0)
+                    pictrl.integState += heatingConfig[i].roomComp.i * e * PI_INTERVAL / 3600.0; // Ki * e * ts, ts = 60 s
+                else
+                    pictrl.integState += heatingConfig[i].roomComp.i * e * 0.3 * PI_INTERVAL / 3600.0; // slower as cooling takes more time
+            // else freeze integrator
+        }
         else
             pictrl.integState = pictrl.integState * 0.95; // decay
 
         // anti windup
         clip(pictrl.integState, -5, 5);
 
-        pictrl.deltaT = p + pictrl.integState;
+        double boost = 0;
+        if (e > 1.0)
+            boost = e * heatingConfig[i].roomComp.boost; // e * Kb
+
+        pictrl.deltaT = p + pictrl.integState + boost;
         // clipping
-        clip(pictrl.deltaT, -5, 10);
+        clip(pictrl.deltaT, -5, 12);
+
+        setBoilerRequest[i].force();
     }
 }
 
@@ -754,7 +828,9 @@ void OTControl::OnRxSlave(const unsigned long msg, const OpenThermResponseStatus
                 }
             }
             if (id == OpenThermMessageID::Status) {
-                uint16_t data = 1<<3; // flame on
+                uint8_t temp = millis() / 206723;
+                uint8_t x = ((temp % 3) == 0) ? 0 : 1;
+                uint16_t data = x<<3; // flame on
                 if ((msg & (1<<8)) != 0)
                     data |= 1<<1; // CH1 enable -> CH1 active
                 if ((msg & (1<<9)) != 0)
@@ -839,6 +915,8 @@ void OTControl::getJson(JsonObject &obj) {
     jSlave[F("rxCount")] = master.rxCount;
     if ( (otMode == OTMODE_MASTER) || (otMode == OTMODE_LOOPBACKTEST) )
         jSlave[F("timeouts")] = master.timeoutCount;
+    jSlave[F("flameRatio")] = flameRatio.getDuty();
+    jSlave[F("flameFreq")] = flameRatio.getFreq();
 
     JsonObject thermostat = obj[F("thermostat")].to<JsonObject>();
     for (auto *valobj: thermostatValues)
@@ -912,7 +990,6 @@ bool OTControl::sendDiscovery() {
     haDisc.setRetain(true);
     discFlag &= haDisc.publish(slaveApp == SLAVEAPP_HEATCOOL);
 
-
     haDisc.createClima(F("room set temperature 1"), F("clima_room1"), mqtt.getCmdTopic(Mqtt::TOPIC_ROOMSETPOINT1));
     haDisc.setMinMaxTemp(10, 30, 0.5);
     haDisc.setCurrentTemperatureTopic(haDisc.defaultStateTopic);
@@ -975,6 +1052,16 @@ bool OTControl::sendDiscovery() {
     haDisc.createNumber(F("Max. modulation"), Mqtt::getTopicString(Mqtt::TOPIC_MAXMODULATION), mqtt.getCmdTopic(Mqtt::TOPIC_MAXMODULATION));
     haDisc.setMinMax(0, 100, 1);
     discFlag &= haDisc.publish();
+
+    haDisc.createSensor(F("flame ratio"), F("flame_ratio"));
+    haDisc.setValueTemplate(F("{{ value_json.slave.flameRatio }}"));
+    haDisc.setUnit(F("%"));
+    discFlag &= haDisc.publish(slaveApp == SLAVEAPP_HEATCOOL);
+
+    haDisc.createSensor(F("burner starts /h"), F("flame_freq"));
+    haDisc.setValueTemplate(F("{{ value_json.slave.flameFreq }}"));
+    haDisc.setUnit(F("/h"));
+    discFlag &= haDisc.publish(slaveApp == SLAVEAPP_HEATCOOL);
 
     return discFlag;
 }
@@ -1085,6 +1172,7 @@ void OTControl::setConfig(JsonObject &config) {
         hc.roomComp.enabled = roomComp[F("enabled")] | false;
         hc.roomComp.p = roomComp[F("p")] | 0.0;
         hc.roomComp.i = roomComp[F("i")] | 0.0;
+        hc.roomComp.boost = roomComp[F("boost")] | 3.0;
         hc.hysteresis = hpObj[F("hysteresis")] | 0.1;
         hc.enableHyst = hpObj[F("enableHyst")] | false;
         
@@ -1094,8 +1182,10 @@ void OTControl::setConfig(JsonObject &config) {
         if (hc.roomComp.i == 0)
             heatingCtrl[i].piCtrl.integState = 0;
 
-        if (!roomSetPoint[i])
+        if (!roomSetPoint[i]) {
             roomSetPoint[i].set(hc.roomSet, Sensor::SOURCE_NA);
+            heatingCtrl[i].piCtrl.rspPrev = hc.roomSet;
+        }
     }
 
     JsonObject ventObj = config[F("vent")];
