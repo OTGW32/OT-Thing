@@ -18,4 +18,8 @@ public:
 };
 
 extern Portal portal;
+#ifdef NODO
+extern const IPAddress apAddress;
+extern const IPAddress apMask;
+#endif
 #endif

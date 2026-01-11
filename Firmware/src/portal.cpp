@@ -12,8 +12,13 @@
 #include "httpUpdate.h"
 
 static const char APP_JSON[] PROGMEM = "application/json";
+#ifdef NODO
+const IPAddress apAddress(4, 3, 2, 1);
+const IPAddress apMask(255, 255, 255, 0);
+#else
 static const IPAddress apAddress(4, 3, 2, 1);
 static const IPAddress apMask(255, 255, 255, 0);
+#endif
 Portal portal;
 static AsyncWebServer websrv(80);
 AsyncWebSocket ws("/ws");
@@ -27,16 +32,29 @@ Portal::Portal():
 void Portal::begin(bool configMode) {
      if (configMode) {
         WiFi.persistent(false);
+#ifdef NODO
+        WiFi.disconnect();
+        WiFi.mode(WIFI_AP);   // Force AP only so DHCP works reliably
+#endif
         WiFi.softAPConfig(apAddress, apAddress, apMask);
+#ifdef NODO
+        delay(200); // allow stack to settle
+        if (!WiFi.softAP(F(AP_SSID), F(AP_PASSWORD))) 
+            Serial.println("Failed to start AP"); // print message if setup fails
+        else
+            Serial.println("AP started successfully");
+#else
         WiFi.softAP(F(AP_SSID), F(AP_PASSWORD));
-        
+
         if (WiFi.SSID().isEmpty())
             WiFi.mode(WIFI_AP);
         else
             WiFi.mode(WIFI_AP_STA);
-
+#endif
         WiFi.setAutoReconnect(false);
+#ifndef NODO
         WiFi.persistent(true);
+#endif
     }
 
     websrv.begin();

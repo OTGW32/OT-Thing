@@ -272,6 +272,9 @@ void manageNetwork() {
 
 void setup() {
     Serial.begin();
+#ifdef NODO
+    devconfig.begin();
+#endif
     Serial.setTxTimeoutMs(100);
     pinMode(GPIO_STATUS_LED, OUTPUT);
     pinMode(GPIO_CONFIG_BUTTON, INPUT);
@@ -349,7 +352,15 @@ void setup() {
     configMode = digitalRead(GPIO_CONFIG_BUTTON) == 0;
     if (configMode)
         statusLedData = 0xA000;
-
+#ifdef NODO
+// Kill the Station radio immediately so it doesn't fight the AP
+    if (configMode) {
+        WiFi.mode(WIFI_OFF); 
+        delay(50);
+        WiFi.mode(WIFI_AP); 
+        Serial.println("Config Mode: Radio prepared (AP-only).");
+    }
+#endif
     Serial.begin();
     Serial.setTxTimeoutMs(100);
 
@@ -371,24 +382,35 @@ void setup() {
     adv->start();*/
 #endif
 #ifdef NODO
-  // Only start WiFi if Ethernet isn't already running
-  if (WIRED_ETHERNET_PRESENT == false) {
+  // Only start WiFi if Ethernet isn't already running and not in config mode
+  if (WIRED_ETHERNET_PRESENT == false && !configMode) {
 #endif
     WiFi.onEvent(wifiEvent);
     WiFi.setSleep(false);
     WiFi.begin();
 #ifdef NODO
-  }
+  } 
+#endif
+#ifdef NODO
+  if (!configMode) {
 #endif
     AddressableSensor::begin();
   OneWireNode::begin();
     BLESensor::begin();
   haDisc.begin();
   mqtt.begin();
+#ifdef NODO
+  }
+  if (!configMode)
+#else // moved this to top of setup()
   devconfig.begin();
+#endif
   configTime(devconfig.getTimezone(), 3600, PSTR("pool.ntp.org"));
 
     portal.begin(configMode);
+#ifdef NODO
+  if (!configMode)
+#endif
     command.begin();
 
 #ifdef DEBUG
