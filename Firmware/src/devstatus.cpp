@@ -24,7 +24,7 @@ void DevStatus::lock() {
 void DevStatus::unlock() {
     xSemaphoreGive(mutex);
 }
-#endif
+
 JsonDocument &DevStatus::buildDoc() {
     doc.clear();
 
