@@ -11,11 +11,7 @@ inline bool WIRED_ETHERNET_PRESENT, OLED_PRESENT = false;
 extern class DevStatus {
 private:
     JsonDocument doc;
-#ifdef NODO
-    SemaphoreHandle_t xMutex; // Replace std::mutex
-#else
     SemaphoreHandle_t mutex;
-#endif
 public:
     DevStatus();
     void lock();
