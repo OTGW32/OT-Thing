@@ -103,6 +103,9 @@ public:
             TickType_t start = xTaskGetTickCount();
 
             while (!otcontrol.master.hal.isReady()) {
+#ifdef NODO // try to prevent watchdog reset
+                yield(); // allow other tasks to run
+#endif
                 if ((xTaskGetTickCount() - start) > pdMS_TO_TICKS(2000))
                     break;
 
