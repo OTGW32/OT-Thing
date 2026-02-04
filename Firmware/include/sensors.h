@@ -25,6 +25,10 @@ protected:
     double temp;
 public:
     static void begin();
+#ifdef NODO
+    void lock();    // <--- REQUIRED
+    void unlock();  // <--- REQUIRED
+#endif
 };
 
 class BLESensor: public AddressableSensor {

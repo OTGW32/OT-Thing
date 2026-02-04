@@ -171,7 +171,8 @@ void displayNetworkStatus(unsigned long now) {
     } else if ( pageno > 1 ) { 
       if (millis() > 5000) { 
           devstatus.lock(); 
-          JsonDocument &doc = devstatus.buildDoc();
+          JsonDocument doc;
+          devstatus.buildDoc(doc);
 
       if ( pageno == 2 || pageno == 3 ){
         snprintf(buffer, sizeof(buffer), "Heating circuit %d", pageno-1);
@@ -291,7 +292,7 @@ void setup() {
       oled_display.setCursor(0, 0);          // Position on screen
 
       // Print message
-      oled_display.println("Nodo OTGW32 V1.0.0");
+      oled_display.println("Nodo OTGW32 V1.0.1");
       oled_display.setCursor(0, 20);          // Position on screen
       oled_display.println("Press Boot for more");
       oled_display.setCursor(0, 30);          // Position on screen
