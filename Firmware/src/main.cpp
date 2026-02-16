@@ -292,7 +292,7 @@ void setup() {
       oled_display.setCursor(0, 0);          // Position on screen
 
       // Print message
-      oled_display.println("Nodo OTGW32 V1.0.1");
+      oled_display.println("Nodo OTGW32 V1.0.3");
       oled_display.setCursor(0, 20);          // Position on screen
       oled_display.println("Press Boot for more");
       oled_display.setCursor(0, 30);          // Position on screen

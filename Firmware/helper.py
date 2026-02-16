@@ -216,15 +216,7 @@ def after_upload(source, target, env):
         
         print("Bring target to config mode & press enter")
         input("")
-        ap_ssid, ap_password = load_ap_credentials(env)
-        ensure_windows_wifi_profile(ap_ssid, ap_password)
-        try:
-            subprocess.run(
-                ["netsh", "wlan", "connect", f"name={ap_ssid}"],
-                check=True,
-            )
-        except Exception as e:
-            print(f"Failed to connect to '{ap_ssid}' via netsh:", e)
+        os.system('cmd /c netsh wlan connect name = "OTthing"')
         time.sleep(2)
         webbrowser.open('http://4.3.2.1')
         print("Press enter to send default config to target")
