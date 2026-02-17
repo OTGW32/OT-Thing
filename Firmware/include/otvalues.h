@@ -219,7 +219,7 @@ class OTValueFlags: public OTValue {
 protected:
     struct Flag {
         uint8_t bit {0};
-        const char *name {nullptr};
+        const char *field {nullptr};
         const char *discName {nullptr};
         const char *haDevClass {nullptr};
     };
@@ -228,7 +228,7 @@ protected:
     bool slave;
     OTValueFlags(const OpenThermMessageID id, const int interval, const Flag *flagtable, const uint8_t numFlags, const bool slave);
     void getValue(JsonVariant var) const override;
-    bool sendDiscFlag(String name, const char *field, const char *devClass);
+    bool sendDiscFlag(const Flag *flag, const bool enb);
     bool sendDiscovery() override;
 };
 
@@ -267,6 +267,7 @@ private:
     };
 protected:
     void getValue(JsonVariant var) const override;
+    bool sendDiscovery() override;
 public:    
     OTValueMasterStatus();
 };
@@ -481,5 +482,5 @@ public:
 
 
 extern OTValue *slaveValues[55];
-extern OTValue *thermostatValues[18];
+extern OTValue *thermostatValues[19];
 extern const char* getOTname(OpenThermMessageID id);

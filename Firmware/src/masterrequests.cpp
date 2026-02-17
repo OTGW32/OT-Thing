@@ -1,6 +1,8 @@
 #include "masterrequests.h"
 #include "otcontrol.h"
 
+using enum OpenThermMessageID;
+
 OTWriteRequest::OTWriteRequest(OpenThermMessageID id, uint16_t intervalS):
     interval(intervalS),
         id(id) {
@@ -38,7 +40,7 @@ OTWriteRequest::operator bool() {
 
 
 OTWRSetDhw::OTWRSetDhw():
-        OTWriteRequest(OpenThermMessageID::TdhwSet, 30) {
+        OTWriteRequest(TdhwSet, 30) {
 }
 
 OTWRSetBoilerTemp::OTWRSetBoilerTemp(const uint8_t ch):
@@ -48,35 +50,38 @@ OTWRSetBoilerTemp::OTWRSetBoilerTemp(const uint8_t ch):
 }
 
 OTWRMasterConfigMember::OTWRMasterConfigMember():
-        OTWriteRequest(OpenThermMessageID::MConfigMMemberIDcode, 180) {
+        OTWriteRequest(MConfigMMemberIDcode, 180) {
 }
 
 OTWRSetVentSetpoint::OTWRSetVentSetpoint():
-        OTWriteRequest(OpenThermMessageID::Vset, 60) {
+        OTWriteRequest(Vset, 60) {
 }
 
 OTWRSetRoomTemp::OTWRSetRoomTemp(const uint8_t ch):
-        OTWriteRequest((ch == 0) ? OpenThermMessageID::Tr : OpenThermMessageID::TrCH2, 60) {
+        OTWriteRequest((ch == 0) ? Tr : TrCH2, 60) {
 }
 
 OTWRSetRoomSetPoint::OTWRSetRoomSetPoint(const uint8_t ch):
-        OTWriteRequest((ch == 0) ? OpenThermMessageID::TrSet : OpenThermMessageID::TrSetCH2, 60) {
+        OTWriteRequest((ch == 0) ? TrSet : TrSetCH2, 60) {
 }
 
 OTWRSetOutsideTemp::OTWRSetOutsideTemp():
-        OTWriteRequest(OpenThermMessageID::Toutside, 60) {
+        OTWriteRequest(Toutside, 60) {
 }
 
 OTWRSetMaxModulation::OTWRSetMaxModulation():
-        OTWriteRequest(OpenThermMessageID::MaxRelModLevelSetting, 180) {
+        OTWriteRequest(MaxRelModLevelSetting, 180) {
 }
 
-
 OTWRProdVersion::OTWRProdVersion():
-        OTWriteRequest(OpenThermMessageID::MasterVersion, 180) {
+        OTWriteRequest(MasterVersion, 180) {
 }
 
 OTWRSetOTVersion::OTWRSetOTVersion():
-        OTWriteRequest(OpenThermMessageID::OpenThermVersionMaster, 180) {
+        OTWriteRequest(OpenThermVersionMaster, 180) {
+}
+
+OTWRSetMaxCh::OTWRSetMaxCh():
+        OTWriteRequest(MaxTSet, 180) {
 }
 

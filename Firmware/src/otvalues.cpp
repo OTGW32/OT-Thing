@@ -52,6 +52,7 @@ static const OTItem OTITEMS[] PROGMEM = {
     {TdhwSetUBTdhwSetLB,        PSTR("dhw_bounds")},
     {MaxTSetUBMaxTSetLB,        PSTR("ch_bounds")},
     {TdhwSet,                   PSTR("dhw_set_t")},
+    {MaxTSet,                   PSTR("max_set_t")},
     {StatusVentilationHeatRecovery, PSTR("vent_status")},
     {Vset,                      PSTR("rel_vent_set")},
     {ASFflagsOEMfaultCodeVentilationHeatRecovery, PSTR("vent_fault_flags")},
@@ -148,7 +149,7 @@ OTValue *slaveValues[55] = { // reply data collected (read) from slave (boiler /
 };
 
 
-OTValue *thermostatValues[18] = { // request data sent (written) from roomunit
+OTValue *thermostatValues[19] = { // request data sent (written) from roomunit
     new OTValueFloat(           TSet,                   -1),
     new OTValueFloat(           TsetCH2,                -1),
     new OTValueFloat(           Tr,                     -1),
@@ -166,7 +167,8 @@ OTValue *thermostatValues[18] = { // request data sent (written) from roomunit
     new OTValueDate(),
     new OTValueu16(             Year,                   -1),
     new OTValueu16(             Vset,                   -1),
-    new OTValueFloat(           Toutside,               -1)
+    new OTValueFloat(           Toutside,               -1),
+    new OTValueFloat(           MaxTSet,                -1)
 };
 
 const char* getOTname(OpenThermMessageID id) {
@@ -483,35 +485,32 @@ OTValueFlags::OTValueFlags(const OpenThermMessageID id, const int interval, cons
 
 void OTValueFlags::getValue(JsonVariant var) const {
     var[F("value")] = String(value, HEX);
-    for (uint8_t i=0; i<numFlags; i++) {
-        const char *str = flagTable[i].name;
-        var[FPSTR(str)] = (bool) (value & (1<<flagTable[i].bit));
-    }
+    for (uint8_t i=0; i<numFlags; i++)
+        var[FPSTR(flagTable[i].field)] = (bool) (value & (1<<flagTable[i].bit));
 }
 
-bool OTValueFlags::sendDiscFlag(String name, const char *field, const char *devClass)  {
+bool OTValueFlags::sendDiscFlag(const Flag *flag, const bool enb)  {
+    if (flag->discName == nullptr)
+        return true;
+
     String dc;
-    if (devClass != nullptr)
-        dc = FPSTR(devClass);
-    haDisc.createBinarySensor(name, FPSTR(field), dc);
+    if (flag->haDevClass != nullptr)
+        dc = FPSTR(flag->haDevClass);
+
+    haDisc.createBinarySensor(FPSTR(flag->discName), FPSTR(flag->field), dc);
     
     String valTmpl = F("{{ None if (value_json.#0.get('#1')) is none else 'ON' if (value_json.#0.#1.#2) else 'OFF' }}");
 
     valTmpl.replace("#0", slave ? F("slave") : F("thermostat"));
     valTmpl.replace("#1", getName());
-    valTmpl.replace("#2", FPSTR(field));
+    valTmpl.replace("#2", FPSTR(flag->field));
     haDisc.setValueTemplate(valTmpl);
-    return haDisc.publish(enabled);
+    return haDisc.publish(enb);
 };
 
 bool OTValueFlags::sendDiscovery() {
     for (uint8_t i=0; i<numFlags; i++) {
-        if (flagTable[i].discName == nullptr)
-            continue;
-        const char *str = flagTable[i].name;
-        const char *discName = flagTable[i].discName;
-        const char *haDevClass = flagTable[i].haDevClass;
-        if (!sendDiscFlag(FPSTR(discName), str, haDevClass))
+        if (!sendDiscFlag(&flagTable[i], enabled))
             return false;
     }
     return true;
@@ -550,6 +549,24 @@ void OTValueStatus::getValue(JsonVariant var) const {
 
 OTValueMasterStatus::OTValueMasterStatus():
         OTValueFlags(Status, -1, flags, sizeof(flags) / sizeof(flags[0]), false) {
+}
+
+bool OTValueMasterStatus::sendDiscovery() {
+    auto sc = OTValue::getSlaveConfig();
+    if (!sc)
+        return false;
+
+    for (uint8_t i=0; i<numFlags; i++) {
+        bool enb = enabled;
+        if (flagTable[i].field == CH2_ENABLE)
+            enb &= sc->hasCh2();
+        else if (flagTable[i].field == DHW_ENABLE)
+            enb &= sc->hasDHW();
+        
+        if (!sendDiscFlag(&flagTable[i], enb))
+            return false;
+    }
+    return true;
 }
 
 void OTValueMasterStatus::getValue(JsonVariant var) const {

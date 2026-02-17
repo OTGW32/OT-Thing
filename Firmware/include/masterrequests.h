@@ -66,3 +66,8 @@ class OTWRSetOTVersion: public OTWriteRequest {
 public:
     OTWRSetOTVersion();
 };
+
+class OTWRSetMaxCh: public OTWriteRequest {
+public:
+    OTWRSetMaxCh();
+};
