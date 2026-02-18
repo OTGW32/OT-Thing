@@ -5,6 +5,8 @@
 #include "util.h"
 #include "masterrequests.h"
 
+const uint8_t NUM_HEATCIRCUITS = 2;
+
 struct SlaveRequestStruct {
     OpenThermMessageID idReq;
     OpenThermMessageType typeReq;
@@ -73,7 +75,7 @@ private:
             double i; // Ki 1/h
             double boost; // Kb K/K
         } roomComp;
-    } heatingConfig[2];
+    } heatingConfig[NUM_HEATCIRCUITS];
     struct HeatingControl {
         bool chOn;
         double flowTemp;
@@ -88,7 +90,7 @@ private:
             double deltaT {0};
         } piCtrl;
         bool suspended {false};
-    } heatingCtrl[2];
+    } heatingCtrl[NUM_HEATCIRCUITS];
     void loopPiCtrl();
     unsigned long nextPiCtrl { 0 };
     struct {
@@ -132,15 +134,16 @@ private:
     } flameRatio;
     bool discFlag {true};
     OTWRSetDhw setDhwRequest;
-    OTWRSetBoilerTemp setBoilerRequest[2];
+    OTWRSetBoilerTemp setBoilerRequest[NUM_HEATCIRCUITS];
     OTWRMasterConfigMember setMasterConfigMember;
     OTWRSetVentSetpoint setVentSetpointRequest;
-    OTWRSetRoomTemp setRoomTemp[2];
-    OTWRSetRoomSetPoint setRoomSetPoint[2];
+    OTWRSetRoomTemp setRoomTemp[NUM_HEATCIRCUITS];
+    OTWRSetRoomSetPoint setRoomSetPoint[NUM_HEATCIRCUITS];
     OTWRSetOutsideTemp setOutsideTemp;
     OTWRSetMaxModulation setMaxModulation;
     OTWRProdVersion setProdVersion;
     OTWRSetOTVersion setOTVersion;
+    OTWRSetMaxCh setMaxCh;
     uint8_t masterMemberId;
     struct OTInterface {
         OTInterface(const uint8_t inPin, const uint8_t outPin, const bool isSlave);

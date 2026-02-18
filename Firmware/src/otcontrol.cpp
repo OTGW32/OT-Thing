@@ -482,6 +482,13 @@ void OTControl::loop() {
                 return;
             }
 
+            if (setMaxCh) {
+                double maxCh = heatingConfig[0].flowMax;
+                if (hasCh2 && (heatingConfig[1].flowMax > maxCh))
+                    maxCh = heatingConfig[1].flowMax;
+                setMaxCh.sendFloat(maxCh);
+            }
+
             if (millis() > lastBoilerStatus + 800) {
                 lastBoilerStatus = millis();
                 const bool ch1 = heatingCtrl[0].chOn && 
@@ -536,7 +543,7 @@ void OTControl::loop() {
 
 void OTControl::loopPiCtrl() {
     OTValueStatus *ots = static_cast<OTValueStatus*>(OTValue::getSlaveValue(Status));
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<NUM_HEATCIRCUITS; i++) {
         setBoilerRequest[i].force();
 
         HeatingControl::PiCtrl &pictrl = heatingCtrl[i].piCtrl;
@@ -1053,7 +1060,7 @@ void OTControl::getJson(JsonObject &obj) {
 
     
     JsonArray hcarr = obj[F("heatercircuit")].to<JsonArray>();
-    for (int i=0; i<2; i++) {
+    for (int i=0; i<NUM_HEATCIRCUITS; i++) {
         JsonObject hc = hcarr.add<JsonObject>();
         double d;
 
@@ -1266,7 +1273,7 @@ bool OTControl::sendCapDiscoveries() {
     OTValueSlaveConfigMember *vsc = OTValue::getSlaveConfig();
     if ((vsc == nullptr) || !(vsc->isSet()))
         return true;
-
+        
     haDisc.createClima(F("DHW"), Mqtt::getTopicString(Mqtt::TOPIC_DHWSETTEMP), mqtt.getCmdTopic(Mqtt::TOPIC_DHWSETTEMP));
     haDisc.setMinMaxTemp(5, 65, 1);
     haDisc.setCurrentTemperatureTemplate(F("{{ value_json.slave.dhw_t | default(None) }}"));
@@ -1315,7 +1322,7 @@ void OTControl::setConfig(JsonObject &config) {
     if (config[F("otMode")].is<JsonInteger>())
         mode = (OTMode) (int) config[F("otMode")];
 
-    for (int i=0; i<sizeof(heatingConfig) / sizeof(heatingConfig[0]); i++) {
+    for (int i=0; i<NUM_HEATCIRCUITS; i++) {
         JsonObject hpObj = config[F("heating")][i];
         HeatingConfig &hc = heatingConfig[i];
         hc.chOn = hpObj[F("chOn")];
@@ -1373,9 +1380,11 @@ void OTControl::setConfig(JsonObject &config) {
     setBoilerRequest[0].force();
     setBoilerRequest[1].force();
     setMasterConfigMember.force();
+    setVentSetpointRequest.force();
     setMaxModulation.force();
     setProdVersion.force();
     setOTVersion.force();
+    setMaxCh.force();
 
     master.resetCounters();
     slave.resetCounters();
