@@ -356,8 +356,11 @@ double OTControl::getFlow(const uint8_t channel) {
         return 0;
     }
 
-    // room temperature compensation
-    flow += heatingCtrl->piCtrl.deltaT;
+    if (heatingCtrl->piCtrl.enabled) {
+        // room temperature compensation
+        flow += heatingCtrl->piCtrl.deltaT;
+    }
+    
     clip(flow, 0, hc.flowMax);
 
     return flow;
@@ -1424,6 +1427,7 @@ void OTControl::setMaxMod(const int mm) {
 
 void OTControl::setRoomComp(const bool en, const uint8_t channel) {
     heatingCtrl[channel].piCtrl.enabled = en;
+    setBoilerRequest[channel].force();
 }
 
 void OTControl::setChTemp(const double temp, const uint8_t channel) {
