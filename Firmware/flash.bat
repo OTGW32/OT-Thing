@@ -17,18 +17,8 @@ for %%f in (espefuse.exe esp_rfc2217_server.exe README.md LICENSE) do (
     if exist "%%f" del /f /q "%%f"
 )
 :FINISH
-set "PS_PORT=Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match 'VID_3042' -or $_.FriendlyName -match 'USB Serial Device' } | ForEach-Object { if ($_.FriendlyName -match '\((COM\d+)\)') { $matches[1] } } | Select-Object -First 1"
 
-for /f "usebackq tokens=*" %%p in (`powershell -ExecutionPolicy Bypass -Command "%PS_PORT%"`) do set "S3_PORT=%%p"
-
-if not "%S3_PORT%"=="" (
-    echo OTGW32 detected on %S3_PORT%
-    set "PORT_ARG=--port %S3_PORT%"
-) else (
-    echo OTGW32 not found, trying all ports.
-    set "PORT_ARG="
-)
 echo Programming OTGW32 with firmware
-.\esptool.exe %PORT_ARG% --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 otgw32.bin
+.\esptool.exe --port-filter vid=0x303A --port-filter pid=0x1001 chip-id --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 otgw32.bin
 :PAUSE
 pause
