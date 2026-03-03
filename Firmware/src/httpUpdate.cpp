@@ -35,7 +35,20 @@ void HttpUpdate::checkUpdate() {
     String currentFw('v');
     currentFw += F(BUILD_VERSION);
     if (newFw != currentFw)
+#ifdef NODO
+        {
+            JsonArray assets = doc["assets"];
+            for (JsonObject asset : assets) {
+                String name = asset["name"].as<String>();
+                if (name.endsWith(".bin")) {
+                fwUrl = asset["browser_download_url"].as<String>();
+                break; 
+                }
+            }
+        }
+#else
         fwUrl = doc["assets"][0]["browser_download_url"].as<String>();
+#endif
 }
 
 bool HttpUpdate::getNewFw(String &version) {
