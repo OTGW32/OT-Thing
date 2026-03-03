@@ -19,6 +19,6 @@ for %%f in (espefuse.exe esp_rfc2217_server.exe README.md LICENSE) do (
 :FINISH
 
 echo Programming OTGW32 with firmware
-.\esptool.exe --port-filter vid=0x303A --port-filter pid=0x1001 chip-id --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 otgw32.bin
+.\esptool.exe --port-filter vid=0x303A --port-filter pid=0x1001 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 otgw32.bin
 :PAUSE
 pause
