@@ -70,6 +70,6 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: OTGW32_Release.zip
+          files: ..pio/build/otgw32/firmware.bin OTGW32_Release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
