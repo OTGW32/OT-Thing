@@ -1,0 +1,69 @@
+name: Build and Bundle OTGW32
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_zip:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./Firmware
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio
+          key: ${{ runner.os }}-pio
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build Firmware
+        run: pio run -e NODO
+
+      - name: Merge Binaries and Bundle
+        run: |
+          mkdir -p ../release_folder
+          
+          # 1. Find the system boot_app0.bin
+          BOOT_APP0=$(find ~/.platformio/packages/framework-arduinoespressif32 -name boot_app0.bin | head -n 1)
+          
+          # 2. Merge everything into the release folder
+          python3 -m esptool --chip esp32s3 merge_bin \
+            -o ../release_folder/OTGW32_full_factory.bin \
+            --flash_mode dio \
+            --flash_size 4MB \
+            0x0000 .pio/build/NODO/bootloader.bin \
+            0x8000 .pio/build/NODO/partitions.bin \
+            0xe000 $BOOT_APP0 \
+            0x10000 .pio/build/NODO/firmware.bin
+
+          # 3. Copy scripts from their specific "binary" folder
+          cp binary/flash.bat ../release_folder/
+          cp binary/flash.sh ../release_folder/
+          
+          # 4. Set permissions and Zip
+          chmod +x ../release_folder/flash.sh
+          cd ../release_folder && zip -j ../OTGW32_Release.zip ./*
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: OTGW32_Release.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

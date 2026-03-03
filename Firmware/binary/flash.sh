@@ -25,16 +25,6 @@ if [ ! -f "./esptool" ]; then
     chmod +x esptool
 fi
 
-S3_PORT=$(ls /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1)
-
-if [ -n "$S3_PORT" ]; then
-    echo "OTGW32 detected on $S3_PORT"
-    PORT_ARG="--port $S3_PORT"
-else
-    echo "OTGW32 not found."
-    exit 1
-fi
-
 echo "Programming OTGW32"
-./esptool $PORT_ARG --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 otgw32.bin
+./esptool --port-filter vid=0x303A --port-filter pid=0x1001 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 otgw32.bin
 read -p "Press Enter to exit script"
