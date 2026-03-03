@@ -34,7 +34,7 @@ jobs:
         run: pip install platformio
 
       - name: Build Firmware
-        run: pio run -e NODO
+        run: pio run -e otgw32
 
       - name: Merge Binaries and Bundle
         run: |
@@ -48,10 +48,10 @@ jobs:
             -o ../release_folder/OTGW32_full_factory.bin \
             --flash_mode dio \
             --flash_size 4MB \
-            0x0000 .pio/build/NODO/bootloader.bin \
-            0x8000 .pio/build/NODO/partitions.bin \
+            0x0000 .pio/build/otgw32/bootloader.bin \
+            0x8000 .pio/build/otgw32/partitions.bin \
             0xe000 $BOOT_APP0 \
-            0x10000 .pio/build/NODO/firmware.bin
+            0x10000 .pio/build/otgw32/firmware.bin
 
           # 3. Copy scripts from their specific "binary" folder
           cp binary/flash.bat ../release_folder/
