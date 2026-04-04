@@ -81,8 +81,11 @@
         }
 
         div.param {
-            padding-right: 1em;
-            padding-bottom: 0.3em;
+            padding: 0 10px 0.3em 0;
+        }
+
+        div.param.range {
+            min-width: 100%;
         }
 
         h3 {
@@ -104,11 +107,12 @@
 
         div.valunit {
             display: inline-block;
-            width: 25%;
+            width: 90px;
         }
 
         .statusvalue {
             color: #fff;
+            font-size: 0.8em;
         }
 
         .statusvalue.bool-ok::before {
@@ -143,8 +147,9 @@
             list-style-position: inside;
         }
 
-        input[type=text],
         input[type=password],
+        input[type=number],
+        input:not([type]),
         select {
             background-color: #111;
             margin: 5px 0;
@@ -158,7 +163,8 @@
             background: #fd975a;
             height: 5px;
             margin: auto 0;
-            width: 75%;
+            flex: 1;
+            max-width: 300px;
             cursor: pointer;
         }
 
@@ -173,9 +179,17 @@
             margin-bottom: 0.5em;
         }
 
+        canvas {
+            width: 350px;
+        }
+
         div.toolbar {
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 0.3em 0;
+            gap: 1em;
+            flex-wrap: wrap;
         }
 
         button,
@@ -414,6 +428,37 @@
             max-height: 50vh;
             overflow: auto;
         }
+
+        /* Responsive columns */
+        @media (min-width: 600px) {
+            div.statusfield {
+                min-width: 33.33%; /* 3 columns on tablets */
+            }
+            div.param.range {
+                min-width: 45%; /* 2 columns for range inputs on tablets */
+            }
+            canvas {
+                width: 480px;
+            }
+            #mainwrapper {
+                max-width: 600px; /* Slightly wider on tablets */
+            }
+        }
+
+        @media (min-width: 800px) {
+            div.statusfield {
+                min-width: 25%; /* 4 columns on desktops */
+            }
+            div.param.range {
+                min-width: 30%; /* 3 columns for range inputs on tablets */
+            }
+            canvas {
+                width: 680px;
+            }
+            #mainwrapper {
+                max-width: 800px; /* Wider on desktops */
+            }
+        }
     </style>
 </head>
 
@@ -423,14 +468,14 @@
     </div>
 
     <div id="mainwrapper">
-        <h2>OTthing</h2>
-
+        <h2 id="title">OTthing</h2>
+        <input id="inject_status" type="file" accept=".json" style="display: none;">
         <div class="nav">
             <ul>
                 <li tab="status" class="active">Status</li>
                 <li tab="setup">Setup</li>
-                <li tab="heatingcurve1" class="app-heat">Heating circuit 1</li>
-                <li tab="heatingcurve2" class="app-heat CH2">Heating circuit 2</li>
+                <li tab="heatingcurve" channel="0" class="app-heat">Heating circuit 1</li>
+                <li tab="heatingcurve" channel="1" class="app-heat CH2">Heating circuit 2</li>
                 <li tab="log">Log</li>
             </ul>
         </div>
@@ -619,7 +664,7 @@
                     </div>
                     <div class="statusfield">
                         <h5>flame ratio (3 h)</h5>
-                        <span class="statusvalue" field="slave.flameRatio" unit="%"></span>
+                        <span class="statusvalue" field="slave.flameStats.duty" unit="%"></span>
                     </div>
                     <div class="statusfield">
                         <h5>DHW flow rate</h5>
@@ -644,6 +689,14 @@
                     <div class="statusfield">
                         <h5>DHW pump/valve op. hours</h5>
                         <span class="statusvalue" field="slave.dhwpump_op_hours" unit="h"></span>
+                    </div>
+                    <div class="statusfield">
+                        <h5>flametime (10 cycles)</h5>
+                        <span class="statusvalue" field="slave.flameStats.onTime" unit="min"></span>
+                    </div>
+                    <div class="statusfield">
+                        <h5>pausetime (10 cycles)</h5>
+                        <span class="statusvalue" field="slave.flameStats.offTime" unit="min"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Burner starts</h5>
@@ -715,7 +768,7 @@
                     </div>
                     <div class="statusfield">
                         <h5>burner starts (3 h)</h5>
-                        <span class="statusvalue" field="slave.flameFreq" unit="/h"></span>
+                        <span class="statusvalue" field="slave.flameStats.freq" unit="/h"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Frames sent</h5>
@@ -836,107 +889,107 @@
                 <div class="flexline">
                     <div class="statusfield">
                         <h5>Heater circuit 1 enabled</h5>
-                        <span class="statusvalue" field="thermostat.status.ch_enable"></span>
+                        <span class="statusvalue" field="master.status.ch_enable"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Heater circuit 2 enabled</h5>
-                        <span class="statusvalue" field="thermostat.status.ch2_enable"></span>
+                        <span class="statusvalue" field="master.status.ch2_enable"></span>
                     </div>
                     <div class="statusfield">
                         <h5>DHW enabled</h5>
-                        <span class="statusvalue" field="thermostat.status.dhw_enable"></span>
+                        <span class="statusvalue" field="master.status.dhw_enable"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Outside temp. compensation</h5>
-                        <span class="statusvalue" field="thermostat.status.otc_active"></span>
+                        <span class="statusvalue" field="master.status.otc_active"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Flow set temperature</h5>
-                        <span class="statusvalue" field="thermostat.ch_set_t" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.ch_set_t" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Flow set temperature 2</h5>
-                        <span class="statusvalue" field="thermostat.ch_set_t2" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.ch_set_t2" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>DHW set temperature</h5>
-                        <span class="statusvalue" field="thermostat.dhw_set_t" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.dhw_set_t" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>max. CH setpoint</h5>
-                        <span class="statusvalue" field="thermostat.max_set_t" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.max_set_t" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Room temperature</h5>
-                        <span class="statusvalue" field="thermostat.room_t" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.room_t" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Room set temperature</h5>
-                        <span class="statusvalue" field="thermostat.room_set_t" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.room_set_t" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Room temperature 2</h5>
-                        <span class="statusvalue" field="thermostat.room_t2" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.room_t2" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Room set temperature 2</h5>
-                        <span class="statusvalue" field="thermostat.room_set_t2" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.room_set_t2" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>outside temp.</h5>
-                        <span class="statusvalue" field="thermostat.outside_t" unit="&deg;C"></span>
+                        <span class="statusvalue" field="master.outside_t" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Max. rel. modulation</h5>
-                        <span class="statusvalue" field="thermostat.max_rel_mod" unit="%"></span>
+                        <span class="statusvalue" field="master.max_rel_mod" unit="%"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Product version</h5>
-                        <span class="statusvalue" field="thermostat.master_prod_version"></span>
+                        <span class="statusvalue" field="master.master_prod_version"></span>
                     </div>
                     <div class="statusfield">
                         <h5>OT version</h5>
-                        <span class="statusvalue" field="thermostat.master_ot_version"></span>
+                        <span class="statusvalue" field="master.master_ot_version"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Member ID</h5>
-                        <span class="statusvalue" field="thermostat.master_config_member.memberId"></span>
+                        <span class="statusvalue" field="master.master_config_member.memberId"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Smart power</h5>
-                        <span class="statusvalue" field="thermostat.smartPower"></span>
+                        <span class="statusvalue" field="master.smartPower"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Smart power implemented</h5>
-                        <span class="statusvalue" field="thermostat.master_config_member.smartPowerImplemented"></span>
+                        <span class="statusvalue" field="master.master_config_member.smartPowerImplemented"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Frames sent</h5>
-                        <span class="statusvalue" field="thermostat.txCount"></span>
+                        <span class="statusvalue" field="master.txCount"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Frames received</h5>
-                        <span class="statusvalue" field="thermostat.rxCount"></span>
+                        <span class="statusvalue" field="master.rxCount"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Ventilation set point</h5>
-                        <span class="statusvalue" field="thermostat.rel_vent_set" unit="%"></span>
+                        <span class="statusvalue" field="master.rel_vent_set" unit="%"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Vent. enable</h5>
-                        <span class="statusvalue" field="thermostat.vent_status.vent_enable"></span>
+                        <span class="statusvalue" field="master.vent_status.vent_enable"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Vent. open bypass</h5>
-                        <span class="statusvalue" field="thermostat.vent_status.open_bypass"></span>
+                        <span class="statusvalue" field="master.vent_status.open_bypass"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Vent. bypass auto</h5>
-                        <span class="statusvalue" field="thermostat.vent_status.auto_bypass"></span>
+                        <span class="statusvalue" field="master.vent_status.auto_bypass"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Free vent. enable</h5>
-                        <span class="statusvalue" field="thermostat.vent_status.free_vent_enable"></span>
+                        <span class="statusvalue" field="master.vent_status.free_vent_enable"></span>
                     </div>
                 </div>
             </div>
@@ -952,82 +1005,108 @@
             </div>
         </div>
 
-        <div class="tab" id="heatingcurve1">
+        <div class="tab" id="heatingcurve">
             <h3>Dimensioning</h3>
             <div class="group">
-                <div id="flowmax1" class="param">
-                    <h5>Max. flow temperature</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
+                <div class="flexline">
+                    <div class="param range" field="heating.$.flowMax">
+                        <h5>Max. flow temperature</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">&deg;C</span>
+                            </div>
+                            <input id="flowmax" class="curveparam" type="range" min="30" max="90" step="1">
                         </div>
-                        <input type="range" min="30" max="90" step="1">
+                        <div class="infobox">
+                            Gängige Systemtemperaturen Vorlauf/R&uuml;cklauf:
+                            <ul>
+                                <li>Alte Norm: 90 &deg;C / 70 &deg;C</li>
+                                <li>Neue Norm: 75 &deg;C / 65 &deg;C</li>
+                                <li>Niedertemperatur: 70 &deg;C / 50 &deg;C</li>
+                                <li>Brennwert: 60 &deg;C / 45 &deg;C</li>
+                                <li>Brennwert: 45 &deg;C / 35 &deg;C</li>
+                            </ul>
+                            <p>Quelle: <a href="www.bosy-online.de">www.bosy-online.de</a></p>
+                        </div>
                     </div>
-                    <div class="infobox">
-                        Gängige Systemtemperaturen Vorlauf/R&uuml;cklauf:
-                        <ul>
-                            <li>Alte Norm: 90 &deg;C / 70 &deg;C</li>
-                            <li>Neue Norm: 75 &deg;C / 65 &deg;C</li>
-                            <li>Niedertemperatur: 70 &deg;C / 50 &deg;C</li>
-                            <li>Brennwert: 60 &deg;C / 45 &deg;C</li>
-                            <li>Brennwert: 45 &deg;C / 35 &deg;C</li>
-                        </ul>
-                        <p>Quelle: <a href="www.bosy-online.de">www.bosy-online.de</a></p>
-                    </div>
-                </div>
 
-                <div id="exponent1" class="param">
-                    <h5>Heating surface exponent</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
+                    <!-- Exponent is linear-only, hidden when multipoint curve is active. -->
+                    <div class="param linear-only range" field="heating.$.exponent">
+                        <h5>Heating surface exponent</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                            </div>
+                            <input type="range" class="curveparam" min="1.0" max="1.5" step="0.05">
                         </div>
-                        <input type="range" min="1.0" max="1.5" step="0.05">
-                    </div>
-                    <div class="infobox">
-                        Je nach Anteil von Leitung, Konvektion und Strahlung ist das Verhältnis von Vorlauftemperatur
-                        und
-                        Wärmeabgabe überliniear:
-                        <ul>
-                            <li>Fußbodenheizung: 1,0 - 1,05</li>
-                            <li>Flachheizkörper: 1,26 - 1,33</li>
-                            <li>Handtuchradiatoren: 1,20 - 1,30</li>
-                            <li>Heizkörper nach DIN 4703: 1,3</li>
-                            <li>Konvektoren: 1,30 - 1,50</li>
-                        </ul>
-                        <p>Quelle: <a href="www.bosy-online.de">www.bosy-online.de</a></p>
+                        <div class="infobox">
+                            Je nach Anteil von Leitung, Konvektion und Strahlung ist das Verhältnis von Vorlauftemperatur
+                            und
+                            Wärmeabgabe überliniear:
+                            <ul>
+                                <li>Fußbodenheizung: 1,0 - 1,05</li>
+                                <li>Flachheizkörper: 1,26 - 1,33</li>
+                                <li>Handtuchradiatoren: 1,20 - 1,30</li>
+                                <li>Heizkörper nach DIN 4703: 1,3</li>
+                                <li>Konvektoren: 1,30 - 1,50</li>
+                            </ul>
+                            <p>Quelle: <a href="www.bosy-online.de">www.bosy-online.de</a></p>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <h3>Setup</h3>
             <div class="group">
-                <div id="chset1" class="param">
-                    <h5>flow set temperature (default)</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
+                <div class="flexline">
+                    <div class="param range" field="heating.$.flow">
+                        <h5>flow set temperature (default)</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">&deg;C</span>
+                            </div>
+                            <input type="range" class="curveparam" min="25" max="90" step="1" />
                         </div>
-                        <input type="range" min="25" max="90" step="1" />
+                    </div>
+
+                    <div class="param range" field="heating.$.flowMin">
+                        <h5>Min. flow temperature</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">&deg;C</span>
+                            </div>
+                            <input id="flowmin" type="range" class="curveparam" min="10" max="40" step="1">
+                        </div>
                     </div>
                 </div>
 
-                <div id="roomset1" class="param">
+                <div class="param">
+                    <h5>suspend below min. flow</h5>
+                    <div>
+                        <label class="switch">
+                            <input type="checkbox" field="heating.$.minSuspend" />
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="param range" field="heating.$.roomsetpoint.temp">
                     <h5>Room set temperature (default)</h5>
                     <div class="flexline">
                         <div class="valunit">
                             <span class="value"></span>
                             <span class="unit">&deg;C</span>
                         </div>
-                        <input type="range" min="17" max="23" step="0.1">
+                        <input id="roomset" type="range" class="curveparam" min="17" max="23" step="0.1">
                     </div>
                 </div>
 
                 <div class="param">
                     <h5>Room setpoint source</h5>
-                    <select id="selectRoomSetpointSource1" field="heating.0.roomsetpoint.source">
+                    <select field="heating.$.roomsetpoint.source" intval>
                         <option value="0">MQTT</option>
                         <option value="1">OT roomunit</option>
                         <option value="5">auto</option>
@@ -1045,7 +1124,7 @@
                 </div>
                 <div class="param">
                     <h5>Current room temperature source</h5>
-                    <select id="selectRoomTempSource1" field="heating.0.roomtemp.source">
+                    <select field="heating.$.roomtemp.source" intval>
                         <option value="0">MQTT</option>
                         <option value="1">OT roomunit</option>
                         <option value="2">Bluetooth</option>
@@ -1061,11 +1140,26 @@
                     </div>
                     <div class="selopt">
                         <h5>address</h5>
-                        <input id="bleRoomTempAdr1" type="text" />
+                        <input field="heating.$.roomtemp.adr"/>
                     </div>
                     <div class="selopt">
                         <h5>address</h5>
-                        <select id="oneWireRoomTempAdr1" class="oneWireAdr">
+                        <select class="oneWireAdr" field="heating.$.roomtemp.adr">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="param">
+                    <h5>Return temp. source</h5>
+                    <select field="heating.$.returnLimit.source" intval>
+                        <option value="1">OT roomunit</option>
+                        <option value="3">1wire</option>
+                    </select>
+                    <div class="selopt">
+                    </div>
+                    <div class="selopt">
+                        <h5>address</h5>
+                        <select class="oneWireAdr" field="heating.$.returnLimit.adr">
                         </select>
                     </div>
                 </div>
@@ -1075,39 +1169,41 @@
                     <h5>enable</h5>
                     <div>
                         <label class="switch">
-                            <input id="roomCompEnable1" type="checkbox" hideele="roomCompP1 roomCompI1 roomCompBoost1" />
+                            <input class="curveparam" type="checkbox" hideele="roomcompparams" field="heating.$.roomComp.enabled" />
                             <span class="slider"></span>
                         </label>
                     </div>
                 </div>
-                <div id="roomCompP1" class="param">
-                    <h5>P gain</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">K/K</span>
+                <div id="roomcompparams" class="flexline">
+                    <div class="param range" field="heating.$.roomComp.p">
+                        <h5>P gain</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">K/K</span>
+                            </div>
+                            <input type="range" class="curveparam" min="0" max="4" step="0.1">
                         </div>
-                        <input type="range" min="0" max="4" step="0.1">
                     </div>
-                </div>
-                <div id="roomCompI1" class="param">
-                    <h5>I gain</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">1/h</span>
+                    <div class="param range" field="heating.$.roomComp.i">
+                        <h5>I gain</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">1/h</span>
+                            </div>
+                            <input type="range" min="0" max="1" step="0.1">
                         </div>
-                        <input type="range" min="0" max="1" step="0.1">
                     </div>
-                </div>
-                <div id="roomCompBoost1" class="param">
-                    <h5>Boost</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">K/K</span>
+                    <div class="param range" field="heating.$.roomComp.boost">
+                        <h5>Boost</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">K/K</span>
+                            </div>
+                            <input type="range" class="curveparam" min="0" max="4" step="0.1">
                         </div>
-                        <input type="range" min="0" max="4" step="0.1">
                     </div>
                 </div>
 
@@ -1116,71 +1212,104 @@
                     <h5>enable</h5>
                     <div>
                         <label class="switch">
-                            <input id="enableHyst1" type="checkbox" hideele="hyst1" />
+                            <input type="checkbox" hideele="suspendparams" field="heating.$.enableHyst" />
                             <span class="slider"></span>
                         </label>
                     </div>
                 </div>
-                <div id="hyst1" class="param">
-                    <h5>hysteresis</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">K</span>
+                <div id="suspendparams" class="flexline">
+                    <div class="param range" field="heating.$.hysteresis">
+                        <h5>hysteresis</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">K</span>
+                            </div>
+                            <input type="range" min="0.1" max="2" step="0.1">
                         </div>
-                        <input type="range" min="0.1" max="2" step="0.1">
+                    </div>
+                    <div class="param range" field="heating.$.suspOffset">
+                        <h5>suspend offset</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">K</span>
+                            </div>
+                            <input type="range" min="0.0" max="10" step="0.1">
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <h3 style="display: none">Scheduler</h3>
-            <div class="group" style="display: none">
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="days">days</th>
-                            <th class="time">time</th>
-                            <th class="ft">room set temperature</th>
-                            <th class="rem"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="schedulerbody1">
-                    </tbody>
-                </table>
-                <button id="addscheduler1" channel="1">+</button>
             </div>
 
             <h3>Heating curve</h3>
             <div class="group">
-                <div id="gradient1" class="param">
-                    <h5>Gradient</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
+                <div class="flexline">
+                    <!-- Added curve mode switch to toggle between linear and multipoint curve. -->
+                    <div class="param">
+                        <h5>Multipoint</h5>
+                        <div>
+                            <label class="switch">
+                                <input id="curveMode" type="checkbox" />
+                                <span class="slider"></span>
+                            </label>
                         </div>
-                        <input type="range" min="0.1" max="3" step="0.05">
                     </div>
-                    <div class="infobox">
-                        <p>
-                            Quelle: <a href="http://www.bosy-online.de/Heizkurve.htm">www.bosy-online.de</a>
-                        </p>
+                    <div class="param curve-only">
+                        <h5>num. of points</h5>
+                        <div>
+                            <select id="selnumpoints">
+                                <option>3</option>
+                                <option selected>6</option>
+                                <option>9</option>
+                                <option>12</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="param">
+                        <h5> </h5>
+                        <button onclick="copyCurve()" class="curve-only">copy from simple curve</button>
                     </div>
                 </div>
-
-                <div id="offset1" class="param">
-                    <h5>Offset</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
+                <div class="flexline">
+                    <!-- Gradient/offset are linear-only to keep multipoint mode clean. -->
+                    <div class="param linear-only range" field="heating.$.gradient">
+                        <h5>Gradient</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                            </div>
+                            <input type="range" class="curveparam" min="0.1" max="3" step="0.05">
                         </div>
-                        <input type="range" min="-15" max="15" step="0.5">
+                        <div class="infobox">
+                            <p>
+                                Quelle: <a href="http://www.bosy-online.de/Heizkurve.htm">www.bosy-online.de</a>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="param linear-only range" field="heating.$.offset">
+                        <h5>Offset</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">K</span>
+                            </div>
+                            <input type="range" class="curveparam" min="-15" max="15" step="0.5">
+                        </div>
+                    </div>
+                    <div class="param range" field="heating.$.returnLimit.deltaT">
+                        <h5>Returnlimit &Delta;T</h5>
+                        <div class="flexline">
+                            <div class="valunit">
+                                <span class="value"></span>
+                                <span class="unit">K</span>
+                            </div>
+                            <input type="range" class="curveparam" min="0" max="15" step="1">
+                        </div>
                     </div>
                 </div>
 
                 <div class="curve">
-                    <canvas id="canvas1" height="375px" width="375px">
-                    </canvas>
+                    <canvas id="canvas"></canvas>
                 </div>
 
                 <div class="flexline">
@@ -1190,19 +1319,23 @@
                     </div>
                     <div class="statusfield nohide">
                         <h5>Room set point</h5>
-                        <span class="statusvalue" field="heatercircuit.0.roomsetpoint" unit="°C"></span>
+                        <span class="statusvalue" field="heatercircuit.$.roomsetpoint" unit="°C"></span>
                     </div>
                     <div class="statusfield nohide">
                         <h5>Room temperature</h5>
-                        <span class="statusvalue" field="heatercircuit.0.roomtemp" unit="&deg;C"></span>
+                        <span class="statusvalue" field="heatercircuit.$.roomtemp" unit="&deg;C"></span>
                     </div>
                     <div class="statusfield">
                         <h5>Suspended</h5>
-                        <span class="statusvalue" field="heatercircuit.0.suspended"></span>
+                        <span class="statusvalue" field="heatercircuit.$.suspended"></span>
                     </div>
                     <div class="statusfield">
-                        <h5>Integrator state</h5>
-                        <span class="statusvalue" field="heatercircuit.0.integState" unit="K"></span>
+                        <h5>room comp. integrator</h5>
+                        <span class="statusvalue" field="heatercircuit.$.roomcompInteg" unit="K"></span>
+                    </div>
+                    <div class="statusfield">
+                        <h5>ret. limit reduction</h5>
+                        <span class="statusvalue" field="heatercircuit.$.reduction" unit="K"></span>
                     </div>
                 </div>
             </div>
@@ -1219,267 +1352,11 @@
                             <th class="rem"></th>
                         </tr>
                     </thead>
-                    <tbody id="markerbody1">
+                    <tbody id="markerbody">
                     </tbody>
                 </table>
-                <input type="text" id="comment1" />
-                <button id="addmarker1">+</button>
-            </div>
-        </div>
-
-        <div class="tab" id="heatingcurve2">
-            <h3>Dimensioning</h3>
-            <div class="group">
-                <div id="flowmax2" class="param">
-                    <h5>Max. flow temperature</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
-                        </div>
-                        <input type="range" min="30" max="90" step="1">
-                    </div>
-                    <div class="infobox">
-                        Gängige Systemtemperaturen Vorlauf/R&uuml;cklauf:
-                        <ul>
-                            <li>Alte Norm: 90 &deg;C / 70 &deg;C</li>
-                            <li>Neue Norm: 75 &deg;C / 65 &deg;C</li>
-                            <li>Niedertemperatur: 70 &deg;C / 50 &deg;C</li>
-                            <li>Brennwert: 60 &deg;C / 45 &deg;C</li>
-                            <li>Brennwert: 45 &deg;C / 35 &deg;C</li>
-                        </ul>
-                        <p>Quelle: <a href="www.bosy-online.de">www.bosy-online.de</a></p>
-                    </div>
-                </div>
-
-                <div id="exponent2" class="param">
-                    <h5>Heating surface exponent</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                        </div>
-                        <input type="range" min="1.0" max="1.5" step="0.05">
-                    </div>
-                    <div class="infobox">
-                        Je nach Anteil von Leitung, Konvektion und Strahlung ist das Verhältnis von Vorlauftemperatur und Wärmeabgabe überlinear:
-                        <ul>
-                            <li>Fußbodenheizung: 1,0 - 1,05</li>
-                            <li>Flachheizkörper: 1,26 - 1,33</li>
-                            <li>Handtuchradiatoren: 1,20 - 1,30</li>
-                            <li>Heizkörper nach DIN 4703: 1,3</li>
-                            <li>Konvektoren: 1,30 - 1,50</li>
-                        </ul>
-                        <p>Quelle: <a href="www.bosy-online.de">www.bosy-online.de</a></p>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Setup</h3>
-            <div class="group">
-                <div id="chset2" class="param">
-                    <h5>flow set temperature (default)</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
-                        </div>
-                        <input type="range" min="25" max="90" step="1" />
-                    </div>
-                </div>
-
-                <div id="roomset2" class="param">
-                    <h5>Room set temperature (default)</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
-                        </div>
-                        <input type="range" min="17" max="23" step="0.1">
-                    </div>
-                    <div class="infobox">
-                    </div>
-                </div>
-                <div class="param">
-                    <h5>Room setpoint source</h5>
-                    <select id="selectRoomSetpointSource2" field="heating.1.roomsetpoint.source">
-                        <option value="0">MQTT</option>
-                        <option value="1">OT roomunit</option>
-                        <option value="5">auto</option>
-                    </select>
-                    <div class="selopt">
-                        <h5>Topic</h5>
-                        <div class="statusfield statusvalue">
-                            <span class="mqttbasetopic"></span><span>/roomSetpoint2/set</span>
-                        </div>
-                    </div>
-                    <div class="selopt">
-                    </div>
-                    <div class="selopt">
-                    </div>
-                </div>
-                <div class="param">
-                    <h5>Current room temperature source</h5>
-                    <select id="selectRoomTempSource2" field="heating.1.roomtemp.source">
-                        <option value="0">MQTT</option>
-                        <option value="1">OT roomunit</option>
-                        <option value="2">Bluetooth</option>
-                        <option value="3">1wire</option>
-                    </select>
-                    <div class="selopt">
-                        <h5>Topic</h5>
-                        <div class="statusfield statusvalue">
-                            <span class="mqttbasetopic"></span><span>/roomTemp2/set</span>
-                        </div>
-                    </div>
-                    <div class="selopt">
-                    </div>
-                    <div class="selopt">
-                        <h5>address</h5>
-                        <input id="bleRoomTempAdr2" type="text" />
-                    </div>
-                    <div class="selopt">
-                        <h5>address</h5>
-                        <select id="oneWireRoomTempAdr2" class="oneWireAdr">
-                        </select>
-                    </div>
-                </div>
-                <h4>Room compensation (PI controller)</h4>
-                <div class="param">
-                    <h5>enable</h5>
-                    <div>
-                        <label class="switch">
-                            <input id="roomCompEnable2" type="checkbox" hideele="roomCompP2 roomCompI2 roomCompBoost2" />
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div id="roomCompP2" class="param">
-                    <h5>P gain</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">K/K</span>
-                        </div>
-                        <input type="range" min="0" max="5" step="0.1">
-                    </div>
-                </div>
-                <div id="roomCompI2" class="param">
-                    <h5>I gain</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">1/h</span>
-                        </div>
-                        <input type="range" min="0" max="1" step="0.1">
-                    </div>
-                </div>
-
-                <div id="roomCompBoost2" class="param">
-                    <h5>Boost</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">K/K</span>
-                        </div>
-                        <input type="range" min="0" max="4" step="0.1">
-                    </div>
-                </div>
-
-                <h4>Suspend on room setpoint</h4>
-                <div class="param">
-                    <h5>enable</h5>
-                    <div>
-                        <label class="switch">
-                            <input id="enableHyst2" type="checkbox" hideele="hyst2" />
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div id="hyst2" class="param">
-                    <h5>hysteresis</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">K</span>
-                        </div>
-                        <input type="range" min="0.1" max="2" step="0.1">
-                    </div>
-                </div>
-            </div>
-
-            <h3>Heating curve</h3>
-            <div class="group">
-                <div id="gradient2" class="param">
-                    <h5>Gradient</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                        </div>
-                        <input type="range" min="0.1" max="3" step="0.05">
-                    </div>
-                    <div class="infobox">
-                        <p>
-                            Quelle: <a href="http://www.bosy-online.de/Heizkurve.htm">www.bosy-online.de</a>
-                        </p>
-                    </div>
-                </div>
-
-                <div id="offset2" class="param">
-                    <h5>Offset</h5>
-                    <div class="flexline">
-                        <div class="valunit">
-                            <span class="value"></span>
-                            <span class="unit">&deg;C</span>
-                        </div>
-                        <input type="range" min="-15" max="15" step="0.5">
-                    </div>
-                </div>
-
-                <div class="curve">
-                    <canvas id="canvas2" height="375px" width="375px">
-                    </canvas>
-                </div>
-
-                <div class="flexline">
-                    <div class="statusfield nohide">
-                        <h5>Outside temperature</h5>
-                        <span class="statusvalue" field="outsideTemp" unit="°C"></span>
-                    </div>
-                    <div class="statusfield nohide">
-                        <h5>Room set point</h5>
-                        <span class="statusvalue" field="heatercircuit.1.roomsetpoint" unit="°C"></span>
-                    </div>
-                    <div class="statusfield nohide">
-                        <h5>Room temperature</h5>
-                        <span class="statusvalue" field="heatercircuit.1.roomtemp" unit="°C"></span>
-                    </div>
-                    <div class="statusfield">
-                        <h5>Suspended</h5>
-                        <span class="statusvalue" field="heatercircuit.1.suspended"></span>
-                    </div>
-                    <div class="statusfield">
-                        <h5>Integrator state</h5>
-                        <span class="statusvalue" field="heatercircuit.1.integState" unit="K"></span>
-                    </div>
-                </div>
-            </div>
-
-            <h3>Marker</h3>
-            <div class="group">
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="comment">comment</th>
-                            <th class="ot">outside</th>
-                            <th class="ft">flow</th>
-                            <th class="rem"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="markerbody2">
-                    </tbody>
-                </table>
-                <input type="text" id="comment2" />
-                <button id="addmarker2">+</button>
+                <input id="comment" />
+                <button onclick="addMarker()">+</button>
             </div>
         </div>
 
@@ -1489,10 +1366,10 @@
                 <div class="flexline">
                     <div class="param">
                         <h5>Hostname</h5>
-                        <input id="hostname" type="text" value="otthing" />
+                        <input value="otthing" field="hostname" />
                     </div>
                 </div>
-                <button id="scan">scan</button><span id="scanHint" hidden>Scan running...</span>
+                <button onclick="startWifiScan()">scan</button><span id="scanHint" hidden>Scan running...</span>
                 <div id="scanResults" hidden>
                     <table>
                         <thead>
@@ -1510,7 +1387,7 @@
                     <input id="wifissid" type="text"/>
                     <h5>Passwort</h5>
                     <input id="wifipass" type="password"/>
-                    <div><button id="btnsavewifi">connect</button></div>
+                    <div><button onclick="saveWifi()">connect</button></div>
                 </div>
             </div>
 
@@ -1519,32 +1396,32 @@
                 <h4>Mode</h4>
                 <div class="flexline">
                     <div class="param">
-                        <input type="radio" name="otMode" value="0">
+                        <input type="radio" name="otMode" value="0" field="otMode" intval>
                         <label>Bypass</label>
                     </div>
                     <div class="param">
-                        <input type="radio" name="otMode" value="1">
+                        <input type="radio" name="otMode" value="1" field="otMode" intval>
                         <label>Master</label>
                     </div>
                     <div class="param">
-                        <input type="radio" name="otMode" value="2">
+                        <input type="radio" name="otMode" value="2" field="otMode" intval>
                         <label>Repeater</label>
                     </div>
-                    <div class="param" style="display: block">
-                        <input type="radio" name="otMode" value="4">
+                    <div class="param">
+                        <input type="radio" name="otMode" value="4" field="otMode" intval>
                         <label>Test</label>
                     </div>
                 </div>
                 <div class="param otmode-master">
                     <h5>Enable slave interface</h5>
                     <label class="switch">
-                        <input id="enableslave" type="checkbox" />
+                        <input type="checkbox" field="enableSlave" />
                         <span class="slider"></span>
                     </label>
                 </div>
                 <div class="param">
                     <h5>Slave application</h5>
-                    <select id="slaveapp">
+                    <select id="slaveapp" field="slaveApp" intval>
                         <option value="0">heat/cool</option>
                         <option value="1">ventilation</option>
                     </select>
@@ -1556,71 +1433,73 @@
                         <div class="param">
                             <h5>Circuit 1</h5>
                             <label class="switch">
-                                <input id="chOn1" type="checkbox" />
+                                <input type="checkbox" field="heating.0.chOn" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param CH2">
                             <h5>Circuit 2</h5>
                             <label class="switch">
-                                <input id="chOn2" type="checkbox" />
+                                <input type="checkbox" field="heating.1.chOn" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param cool">
                             <h5>Cooling</h5>
                             <label class="switch">
-                                <input id="coolOn" type="checkbox" />
+                                <input type="checkbox" field="boiler.coolOn" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param DHW">
                             <h5>DHW</h5>
                             <label class="switch">
-                                <input id="dhwOn" type="checkbox" />
+                                <input type="checkbox" field="boiler.dhwOn" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param">
                             <h5>OTC</h5>
                             <label class="switch">
-                                <input id="otc" type="checkbox" />
+                                <input type="checkbox" field="boiler.otc" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param">
                             <h5>summer mode</h5>
                             <label class="switch">
-                                <input id="summerMode" type="checkbox" />
+                                <input type="checkbox" field="boiler.summerMode" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param DHW">
                             <h5>DHW blocking</h5>
                             <label class="switch">
-                                <input id="dhwBlocking" type="checkbox" />
+                                <input type="checkbox" field="boiler.dhwBlocking" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                     </div>
-                    <div id="maxModulation" class="param">
-                        <h5>Max. modulation</h5>
-                        <div class="flexline">
-                            <div class="valunit">
-                                <span class="value"></span>
-                                <span class="unit">%</span>
+                    <div class="flexline">
+                        <div class="param range" field="boiler.maxModulation">
+                            <h5>Max. modulation</h5>
+                            <div class="flexline">
+                                <div class="valunit">
+                                    <span class="value"></span>
+                                    <span class="unit">%</span>
+                                </div>
+                                <input type="range" min="0" max="100" step="1" />
                             </div>
-                            <input type="range" min="0" max="100" step="1" />
                         </div>
-                    </div>
-                    <div id="dhwtemp" class="param DHW">
-                        <h5>DHW set temperature</h5>
-                        <div class="flexline">
-                            <div class="valunit">
-                                <span class="value"></span>
-                                <span class="unit">&deg;C</span>
+                        <div class="param DHW range" field="boiler.dhwTemperature">
+                            <h5>DHW set temperature</h5>
+                            <div class="flexline">
+                                <div class="valunit">
+                                    <span class="value"></span>
+                                    <span class="unit">&deg;C</span>
+                                </div>
+                                <input type="range" min="30" max="70" step="1" />
                             </div>
-                            <input type="range" min="30" max="70" step="1" />
                         </div>
                     </div>
                 </div>
@@ -1631,33 +1510,33 @@
                         <div class="param">
                             <h5>vent. enable</h5>
                             <label class="switch">
-                                <input id="ventEnable" type="checkbox" />
+                                <input type="checkbox" field="vent.ventEnable" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param">
                             <h5>open bypass</h5>
                             <label class="switch">
-                                <input id="openBypass" type="checkbox" />
+                                <input type="checkbox" field="vent.openBypass" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param">
                             <h5>auto bypass</h5>
                             <label class="switch">
-                                <input id="autoBypass" type="checkbox" />
+                                <input type="checkbox" field="vent.autoBypass" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param">
                             <h5>free vent. enable</h5>
                             <label class="switch">
-                                <input id="freeVentEnable" type="checkbox" />
+                                <input type="checkbox" field="vent.freeVentEnable" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                     </div>
-                    <div id="ventsetpoint" class="param">
+                    <div class="param range" field="vent.setpoint">
                         <h5>ventilation set point</h5>
                         <div class="flexline">
                             <div class="valunit">
@@ -1671,30 +1550,44 @@
                 <div>
                     <div class="param">
                         <h5>Member ID</h5>
-                        <input id="masterMemberId" type="text" />
+                        <input field="masterMemberId" intval />
                     </div>
                 </div>
                 <div>
                     <h4>override values</h4>
                     <div class="flexline">
                         <div class="param">
-                            <h5>flow temp. 1</h5>
+                            <h5>CH1 on</h5>
                             <label class="switch">
-                                <input id="overrideFlow1" type="checkbox" />
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        <div class="param CH2">
-                            <h5>flow temp. 2</h5>
-                            <label class="switch">
-                                <input id="overrideFlow2" type="checkbox" />
+                                <input type="checkbox" field="heating.0.overrideOn" />
                                 <span class="slider"></span>
                             </label>
                         </div>
                         <div class="param">
-                            <h5>DHW set temp</h5>
+                            <h5>CH1 flow</h5>
                             <label class="switch">
-                                <input id="overrideDhw" type="checkbox" />
+                                <input type="checkbox" field="heating.0.overrideFlow" />
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="param CH2">
+                            <h5>CH2 on</h5>
+                            <label class="switch">
+                                <input type="checkbox" field="heating.1.overrideOn" />
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="param CH2">
+                            <h5>CH2 flow</h5>
+                            <label class="switch">
+                                <input type="checkbox" field="heating.1.overrideFlow" />
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="param">
+                            <h5>DHW</h5>
+                            <label class="switch">
+                                <input type="checkbox" field="boiler.overrideDhw" />
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -1717,7 +1610,7 @@
                             <option value="0a00">reset service mode flag</option>
                             <option value="0c00">automatic hydronic air purge</option>
                         </select>
-                        <button id="btnRequest">send</button>
+                        <button onclick="sendOtRequest()">send</button>
                     </div>
                 </div>
             </div>
@@ -1727,25 +1620,25 @@
                 <div class="flexline">
                     <div class="param">
                         <h5>Host</h5>
-                        <input id="mqttHost" type="text" />
+                        <input field="mqtt.host"/>
                     </div>
                     <div class="param">
                         <h5>Port</h5>
-                        <input id="mqttPort" type="text" />
+                        <input field="mqtt.port" intval/>
                     </div>
                     <div class="param">
                         <h5>Keep alive</h5>
-                        <input id="mqttKeepAlive" type="text" value="15"/>
+                        <input field="mqtt.keepAlive" intval value="15"/>
                     </div>
                     <div class="param">
                         <h5>HA disc. prefix</h5>
-                        <input id="haPrefix" type="text" />
+                        <input field="haPrefix"/>
                     </div>
                     <div class="param">
                         <h5>TLS</h5>
                         <div>
                             <label class="switch">
-                                <input id="mqttTls" type="checkbox" />
+                                <input type="checkbox" field="mqtt.tls" />
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -1754,11 +1647,11 @@
                 <div class="flexline">
                     <div class="param">
                         <h5>Username</h5>
-                        <input id="mqttUser" type="text" />
+                        <input field="mqtt.user"/>
                     </div>
                     <div class="param">
                         <h5>Password</h5>
-                        <input id="mqttPass" type="password" />
+                        <input type="password" field="mqtt.pass"/>
                     </div>
                 </div>                
             </div>
@@ -1766,7 +1659,7 @@
             <h3>Outside temperature</h3>
             <div class="group">
                 <h5>Source</h5>
-                <select id="selectOutsideTempSource" field="outsideTemp.source">
+                <select id="selectOutsideTempSource" field="outsideTemp.source" intval>
                     <option value="0">MQTT</option>
                     <option value="1">OT boiler</option>
                     <option value="2">Bluetooth</option>
@@ -1783,29 +1676,50 @@
                 </div>
                 <div class="selopt">
                     <h5>Address</h5>
-                    <input id="bleOutsideTempAdr" type="text" />
+                    <input field="outsideTemp.adr"/>
                 </div>
                 <div class="selopt">
                     <h5>address</h5>
-                    <select id="oneWireOutsideTempAdr" class="oneWireAdr">
+                    <select class="oneWireAdr" field="outsideTemp.adr">
                     </select>
                 </div>
                 <div class="selopt">
                     <h5>API key</h5>
-                    <input id="inpapikey" type="password" />
+                    <input type="password" field="outsideTemp.apikey"/>
                     <h5>latitude</h5>
-                    <input id="inplat" type="text" />
+                    <input field="outsideTemp.lat" floatval />
                     <h5>longitude</h5>
-                    <input id="inplon" type="text" />
+                    <input field="outsideTemp.lon" floatval />
                     <h5>interval / s</h5>
-                    <input id="inpinterval" type="text" />
+                    <input field="outsideTemp.interval" intval />
                 </div>
             </div>
 
             <h3>System</h3>
             <div class="group">
+                <h4>aux inputs</h4>
+                <div class="flexline">
+                    <div class="param">
+                        <h5>aux 1 (DQ)</h5>
+                        <select field="aux.0.mode" intval>
+                            <option value="0">unused</option>
+                            <option value="1">digital</option>
+                            <option value="3">analog</option>
+                            <option value="4">1wire</option>
+                        </select>
+                    </div>
+                    <div class="param">
+                        <h5>aux. 2 (DI)</h5>
+                        <select field="aux.1.mode" intval>
+                            <option value="0">unused</option>
+                            <option value="1">digital</option>
+                            <option value="4">1wire</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <h4>Timezone</h4>
-                <select id="selTimezone" field="timezone">
+                <select field="timezone" intval>
                     <option value="0">UTC</option>
                     <option value="3600">UTC + 1</option>
                     <option value="7200">UTC + 2</option>
@@ -1820,9 +1734,10 @@
                         <progress id="updprogress" max="100" value="0"></progress>
                     </div>
                 </form>
+                <input id="restore_file" type="file" accept=".json" style="display: none;">
                 <div>
-                    <button id="checkbtn">Check for update</button>
-                    <button id="installbtn" disabled>-</button>
+                    <button onclick="checkFirmwareUpdate()">Check for update</button>
+                    <button onclick="installFirmwareUpdate()" disabled>-</button>
                 </div>
             </div>
         </div>
@@ -1831,14 +1746,23 @@
             </div>
             <div id="logstatus"></div>
             <div class="toolbar">
-                <button id="btnclearlog">clear log</button>
-                <button id="btnsavelog">save log</button>
-                <button id="btnautoscroll">autoscroll</button>
+                <button onclick="clearLog()">clear log</button>
+                <button onclick="toggleAutoScroll(event)">autoscroll</button>
             </div>
         </div>
         <div class="toolbar">
-            <button id="save">save</button>
-            <button id="reboot">reboot</button>
+            <button onclick="saveConfig()">save</button>
+            <button onclick="importConfig()">import config</button>
+            <div>
+                <button onclick="exportItem()">export</button>
+                <select id="selExport">
+                    <option>config</option>
+                    <option>status</option>
+                    <option>log</option>
+                    <option>OT items</option>
+                </select> 
+            </div>
+            <button onclick="reboot()">reboot</button>
         </div>
         <div class="footer"><a href="http://www.seegel-systeme.de" target="_blank">www.seegel-systeme.de</a></div>
     </div>
@@ -1849,16 +1773,21 @@
             </div>
             <pre id="modalBody"></pre>
             <div class="modal-footer">
-                <button id="modalClose">close</button>
+                <button onclick="closeModal()">close</button>
             </div>
         </div>
     </div>
     <script>
-        var config = {
+        const 
+        CURVE_MODE_SIMPLE = 0,
+        CURVE_MODE_MULTIPOINT = 1,
+        defaultConfig = {
             hostname: "otthing",
+            haPrefix: "homeassistant",
             slaveApp: 0, // 0 = heat/cool, 1 = ventilation, 2 = solar storage
-            otMode: 4,
+            otMode: 4, // Test
             enableSlave: false,
+            timezone: 3600,
             boiler: {
                 dhwOn: true,
                 dhwTemperature: 50,
@@ -1871,6 +1800,7 @@
             },
             heating: [
                 {
+                    curveMode: CURVE_MODE_SIMPLE,
                     flow: 45,
                     roomComp: {
                         enabled: false,
@@ -1880,6 +1810,7 @@
                     },
                     chOn: true,
                     flowMax: 60,
+                    flowMin: 10,
                     exponent: 1.3,
                     gradient: 1.0,
                     offset: 0,
@@ -1893,9 +1824,16 @@
                     },
                     overrideFlow: false,
                     enableHyst: false,
-                    hysteresis: 0.5
+                    hysteresis: 0.5,
+                    minSuspend: false,
+                    suspOffset: 0.0,
+                    returnLimit: {
+                        source: 1,
+                        deltaT: 0.0
+                    }
                 },
                 {
+                    curveMode: CURVE_MODE_SIMPLE,
                     flow: 30,
                     roomComp: {
                         enabled: false,
@@ -1905,6 +1843,7 @@
                     },
                     chOn: false,
                     flowMax: 40,
+                    flowMin: 10,
                     exponent: 1.3,
                     gradient: 1.0,
                     offset: 0,
@@ -1918,7 +1857,13 @@
                     },
                     overrideFlow: false,
                     enableHyst: false,
-                    hysteresis: 0.5
+                    hysteresis: 0.5,
+                    minSuspend: false,
+                    suspOffset: 0.0,
+                    returnLimit: {
+                        source: 1,
+                        deltaT: 0.0
+                    }
                 }
             ],
             vent: {
@@ -1929,14 +1874,35 @@
                 setpoint: 3
             },
             outsideTemp: {
-                source: 0
+                source: 1,
+                lat: 49.4771,
+                lon: 10.9887,
+                interval: 300
             },
             mqtt: {
+                host: "",
+                tls: false,
+                port: 1883,
+                user: "",
+                pass: "",
+                keepAlive: 15
             },
-            masterMemberId: 8
-        },
+            masterMemberId: 8,
+            aux: [
+                {
+                    mode: 4 // 1wire
+                },
+                {
+                    mode: 0 // not used
+                }
+            ]
+        };
+        let config = defaultConfig,
         statuscache = {},
-        roomsetpoint = [21, 21]; // used for drawing curve
+        roomsetpoint = [21, 21], // used for drawing curve
+        currentCh = 0,
+        autoscroll = true;
+
 
         function _(query, root = document) {
             return root.querySelector(query);
@@ -1953,210 +1919,765 @@
             return result;
         }
 
-        window.onload = () => {
-            __("div.nav li").forEach(li => {
-                li.onclick = ev => {
-                    __("div.nav li").forEach(x => x.classList.remove("active"));
-                    __(".tab").forEach(x => x.hidden = true);
+        function getNumCurvePoints() {
+            return parseInt(_("#selnumpoints").value);
+        }
 
-                    _(`#${li.getAttribute("tab")}`).hidden = false;
-                    li.classList.add("active");
-                };
-            });
-            _("div.nav li.active").click();
-
-            let xhrSaveConfig = new XMLHttpRequest();
-            //eventhandler for save button
-            _("#save").onclick = () => {
-                config.timezone = parseInt(_("#selTimezone").value);
-                config.hostname = _("#hostname").value;
-                config.haPrefix = _("#haPrefix").value;
-                config.slaveApp = parseInt(_("#slaveapp").value);
-                config.enableSlave = _("#enableslave").checked;
-                config.otMode = (_('input[name="otMode"]:checked') !== undefined) ? parseInt(_('input[name="otMode"]:checked').value) : null;
-                config.outsideTemp = {
-                    source: parseInt(_('#selectOutsideTempSource').value),
-                    apikey: _("#inpapikey").value,
-                    lat: parseFloat(_("#inplat").value),
-                    lon: parseFloat(_("#inplon").value),
-                    interval: parseInt(_("#inpinterval").value),
-                };
-                switch (config.outsideTemp.source) {
-                case 2:
-                    config.outsideTemp.adr = _("#bleOutsideTempAdr").value;
+        // Normalize curve points to x entries, sorted by outside temp for safe interpolation.
+        function normalizeCurvePoints(points) {
+            let normalized = [];
+            let i = 0;
+            while (true) {
+                const src = points?.[i++]; 
+                if (src == null)
                     break;
-                case 3:
-                    config.outsideTemp.adr = _("#oneWireOutsideTempAdr").value;
-                    break;
-                }
 
-                config.heating.forEach((heating, idx) => {
-                    let ch = idx + 1;
-                    heating.chOn = _(`#chOn${ch}`).checked;
-                    heating.overrideFlow = _(`#overrideFlow${ch}`).checked;
-                    heating.enableHyst = _(`#enableHyst${ch}`).checked;
-                    delete heating.roomtemp["adr"];
-                    switch (heating.roomtemp.source) {
-                    case 2:
-                        heating.roomtemp["adr"] = _(`#bleRoomTempAdr${ch}`).value;
-                        break;
-                    case 3:
-                        heating.roomtemp["adr"] = _(`#oneWireRoomTempAdr${ch}`).value;
-                        break;
-                    }
-                    heating.roomComp = {
-                        ...(heating.roomComp ?? {}),
-                        enabled: _(`#roomCompEnable${ch}`).checked
-                    }
+                normalized.push({
+                    outside: parseFloat(src.outside),
+                    flow: parseFloat(src.flow)
                 });
-
-                config.boiler = {
-                    ...(config.boiler ?? {}),
-                    dhwOn: _("#dhwOn").checked,
-                    coolOn: _("#coolOn").checked,
-                    overrideDhw: _("#overrideDhw").checked,
-                    otc: _("#otc").checked,
-                    summerMode: _("#summerMode").checked,
-                    dhwBlocking: _("#dhwBlocking").checked
-                };
-
-                config.vent = {
-                    ...(config.vent ?? {}),
-                    ventEnable: _("#ventEnable").checked,
-                    openBypass: _("#openBypass").checked,
-                    autoBypass: _("#autoBypass").checked,
-                    freeVentEnable: _("#freeVentEnable").checked
-                };
-
-                config.mqtt = {
-                    host: _("#mqttHost").value,
-                    port: parseInt(_("#mqttPort").value),
-                    user: _("#mqttUser").value,
-                    pass: _("#mqttPass").value,
-                    tls: _("#mqttTls").checked,
-                    keepAlive: parseInt(_("#mqttKeepAlive").value)
-                };
-
-                config.masterMemberId = parseInt(_("#masterMemberId").value);
-
-                xhrSaveConfig.open("POST", "config");
-                xhrSaveConfig.setRequestHeader("Content-Type", "application/json");
-                xhrSaveConfig.send(JSON.stringify(config));
-                xhrSaveConfig.onload = (ev) => {
-                    alert("configuration saved successfully");
-                };
-            };
-
-            //eventhandler for save button
-            let xhrWiFiSet = new XMLHttpRequest();
-            xhrWiFiSet.onload = (ev) => {
-            };
-
-            _("#btnsavewifi").onclick = (ev) => {
-                xhrWiFiSet.open('POST', 'setwifi');
-                xhrWiFiSet.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-                let params = "ssid=" + encodeURIComponent(_("#wifissid").value) + 
-                        "&pass=" + encodeURIComponent(_("#wifipass").value); 
-                xhrWiFiSet.send(params);
-            };
-
-            //eventhandler for add marker button
-            _("#addmarker1").onclick = () => {
-                addMarker(1);
-            };
-            //eventhandler for add marker button
-            _("#addmarker2").onclick = () => {
-                addMarker(2);
-            };
-
-            _("#addscheduler1").onclick = (ev) => {
-                addScheduler(1);
-            };
-
-            // eventhandler for scan button
-            _("#scan").onclick = (ev) => {
-                _("#scanResults").hidden = true;
-                _("#scanHint").hidden = false;
-                _("#scanbody").innerHTML = "";
-                scanWiFi();
-            };
-
-            _("#btnRequest").onclick = (ev) => {
-                let id = 4; // ID remote request
-                let rw = 0; // write
-                let data = _("#selRequest").value;
-                _("#modalBody").textContent = "Request running...";
-                _("#dlgSlaveRequest").hidden = false;
-
-                fetch(`/slaverequest?id=${id}&rw=${rw}&data=${data}`)
-                    .then(r => {
-                        if (!r.ok) throw new Error("HTTP " + r.status);
-                        return r.json();
-                    })
-                    .then(resp => {
-                        let rc = parseInt(resp["data"], 16) & 0xff;
-
-                        if (rc >= 128)
-                            _("#modalBody").innerHTML = "ACCEPTED<br>";
-                        else
-                            _("#modalBody").innerHTML = "REFUSED<br>";
-                        
-                        _("#modalBody").innerHTML += `<pre>${JSON.stringify(resp, null, 2)}</pre>`;
-                    })
-                    .catch(err => {
-                        _("#modalBody").textContent = "Error:\n" + err.message;
-                    });
-            };
-            _("#modalClose").onclick = (ev) => {
-                _("#dlgSlaveRequest").hidden = true;
             }
 
-            function addMarker(hk) {
-                if (statuscache.outsideTemp == null) {
-                    alert("No outside temperature available!");
+            normalized.sort((a, b) => b.outside - a.outside);
+            // Enforce monotonic flow so point1 flow is not greater than point2, etc.
+            for (let i = 1; i < normalized.length; i++) {
+                if (normalized[i].flow < normalized[i - 1].flow)
+                    normalized[i].flow = normalized[i - 1].flow;
+            }
+            return normalized;
+        }
+
+        // Track drag state for curve point editing on the canvas.
+        const curveDrag = {
+            active: false,
+            idx: -1,
+            origin: null,
+            xaxis: null,
+            yaxis: null,
+            flowmin: 0,
+            flowmax: 0
+        };
+
+        // Compute curve axes for current flow settings.
+        function getCurveAxes() {
+            const flowmax = config.heating[currentCh].flowMax;
+            let canvas = _("#canvas");
+            const fmg = Math.ceil(flowmax / 10) * 10 + 5; // flowmax for graph
+            const origin = {
+                x: 20,
+                y: canvas.height - 20
+            };
+            const xaxis = {
+                min: 20,
+                max: -30,
+                step: 5,
+                zoom: (canvas.width - origin.x * 2) / (20 - (-30))
+            };
+            const yaxis = {
+                min: 20,
+                max: fmg,
+                step: 10,
+                zoom: (canvas.height - (canvas.height - origin.y) * 2) / (fmg - 20)
+            };
+            return { origin, xaxis, yaxis };
+        }
+
+        // Convert a mouse/touch event to canvas coordinates.
+        function getCanvasPoint(ev) {
+            const canvas = _("#canvas");
+            const rect = canvas.getBoundingClientRect();
+            const touch = ev.touches?.[0] ?? ev.changedTouches?.[0];
+            const clientX = touch ? touch.clientX : ev.clientX;
+            const clientY = touch ? touch.clientY : ev.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        // Enable drag & drop for the multipoint curve on the canvas.
+        function initCurveDrag() {
+            const canvas = _(`#canvas`);
+            if (!canvas || canvas.dataset.dragInit === "1")
+                return;
+
+            canvas.dataset.dragInit = "1";
+
+            function findDragPoint(hcfg, origin, xaxis, yaxis, pos) {
+                let bestIdx = -1;
+                let bestDist = Infinity;
+                hcfg.points.forEach((pt, idx) => {
+                    const px = origin.x + (xaxis.min - pt.outside) * xaxis.zoom;
+                    const py = origin.y - (pt.flow - yaxis.min) * yaxis.zoom;
+                    const dx = pos.x - px;
+                    const dy = pos.y - py;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestIdx = idx;
+                    }
+                });
+                return (bestDist <= 12) ? bestIdx : -1;
+            }
+
+            function clampAndSyncNeighbors(hcfg, idx, outside, flow) {
+                // Prevent crossing in outside axis to keep point ordering stable while dragging.
+                const axes = getCurveAxes();
+                const MIN_X_DIST = 2.0; // °C
+                flow = clip(flow, axes.yaxis.max, axes.yaxis.min);
+                outside = clip(outside, axes.xaxis.min - idx * MIN_X_DIST, axes.xaxis.max + (hcfg.points.length - idx - 1) * MIN_X_DIST);
+
+                for (let i = 0; i < idx; i++) {
+                    hcfg.points[i].flow = Math.min(hcfg.points[i].flow, flow);
+                    hcfg.points[i].outside = Math.max(hcfg.points[i].outside, outside + (idx - i) * MIN_X_DIST);
+                }
+
+                for (let i = idx + 1; i < hcfg.points.length; i++) {
+                    hcfg.points[i].flow = Math.max(hcfg.points[i].flow, flow);
+                    hcfg.points[i].outside = Math.min(hcfg.points[i].outside, outside - (i - idx) * MIN_X_DIST);
+                }
+
+                return { outside, flow };
+            }
+
+            function onDragStart(ev) {
+                const hcfg = config.heating[currentCh] || {};
+                if (hcfg.curveMode !== CURVE_MODE_MULTIPOINT)
                     return;
+                hcfg.points = normalizeCurvePoints(hcfg.points);
+
+                const axes = getCurveAxes();
+                const pos = getCanvasPoint(ev);
+                const idx = findDragPoint(hcfg, axes.origin, axes.xaxis, axes.yaxis, pos);
+                if (idx < 0)
+                    return;
+
+                curveDrag.active = true;
+                curveDrag.idx = idx;
+                curveDrag.origin = axes.origin;
+                curveDrag.xaxis = axes.xaxis;
+                curveDrag.yaxis = axes.yaxis;
+                curveDrag.flowmin = hcfg.flowMin;
+                curveDrag.flowmax = hcfg.flowMax;
+                ev.preventDefault();
+            }
+
+            function onDragMove(ev) {
+                if (!curveDrag.active)
+                    return;
+
+                const hcfg = config.heating[currentCh] || {};
+                const pos = getCanvasPoint(ev);
+                const ot = curveDrag.xaxis.min - (pos.x - curveDrag.origin.x) / curveDrag.xaxis.zoom;
+                const ft = curveDrag.yaxis.min + (curveDrag.origin.y - pos.y) / curveDrag.yaxis.zoom;
+                let outside = Math.round(ot * 2) / 2;
+                let flow = Math.round(ft * 2) / 2;
+                const clamped = clampAndSyncNeighbors(hcfg, curveDrag.idx, outside, flow)
+
+                hcfg.points[curveDrag.idx].outside = clamped.outside;
+                hcfg.points[curveDrag.idx].flow = clamped.flow;
+                hcfg.points = normalizeCurvePoints(hcfg.points);
+                drawCurve();
+                ev.preventDefault();
+            }
+
+            function onDragEnd() {
+                curveDrag.active = false;
+                drawCurve();
+            }
+
+            canvas.addEventListener("mousedown", onDragStart);
+            canvas.addEventListener("touchstart", onDragStart, { passive: false });
+            window.addEventListener("mousemove", onDragMove);
+            window.addEventListener("touchmove", onDragMove, { passive: false });
+            window.addEventListener("mouseup", onDragEnd);
+            window.addEventListener("touchend", onDragEnd);
+        }
+
+        function getMinOutsideTemp(rs, mf, g) {
+            return rs - (mf - rs) / g; //minimal outside temperature at mf
+        }
+
+        // Use multipoint curve interpolation to match firmware behavior.
+        function getFlowTemperatureMultipoint(ot, points) {
+            if (!Array.isArray(points) || points.length === 0)
+                return 0;
+
+            const sorted = normalizeCurvePoints(points);
+            if (sorted.length === 1 || ot >= sorted[0].outside)
+                return sorted[0].flow;
+
+            let i = 0;
+            while (i + 1 < sorted.length && ot < sorted[i + 1].outside)
+                i++;
+
+            if (i + 1 >= sorted.length)
+                return sorted[sorted.length - 1].flow;
+
+            const p1 = sorted[i];
+            const p2 = sorted[i + 1];
+            const denom = (p2.outside - p1.outside);
+            if (Math.abs(denom) < 0.001)
+                return p1.flow;
+
+            const t = (ot - p1.outside) / denom;
+            const p0 = (i > 0) ? sorted[i - 1] : p1;
+            const p3 = (i + 2 < sorted.length) ? sorted[i + 2] : p2;
+            const t2 = t * t;
+            const t3 = t2 * t;
+            let flow = 0.5 * (
+                (2.0 * p1.flow) +
+                (-p0.flow + p2.flow) * t +
+                (2.0 * p0.flow - 5.0 * p1.flow + 4.0 * p2.flow - p3.flow) * t2 +
+                (-p0.flow + 3.0 * p1.flow - 3.0 * p2.flow + p3.flow) * t3
+            );
+            const lo = Math.min(p1.flow, p2.flow);
+            const hi = Math.max(p1.flow, p2.flow);
+            flow = Math.min(Math.max(flow, lo), hi);
+            return flow;
+
+        }
+
+        // Route flow temperature computation to simple or multipoint mode.
+        function getFlowTemperature(ot, rs, hcfg) {
+            switch (hcfg?.curveMode ?? 0) {
+            case CURVE_MODE_SIMPLE: // simple curve
+                return getFlowTemperatureSimple(ot, rs, hcfg);
+
+            case CURVE_MODE_MULTIPOINT: // multipoint curve
+                return getFlowTemperatureMultipoint(ot, hcfg.points);
+
+            default:
+                return 0.0;
+            }
+        }
+
+        /*
+            ot: outside temperature
+            rs: room set temperature
+        */
+        function getFlowTemperatureSimple(ot, rs, hcfg) {
+            const mf = hcfg.flowMax;
+            const n = hcfg.exponent;
+            const g = hcfg.gradient;
+            const s = hcfg.offset;
+
+            const am = getMinOutsideTemp(rs, mf, g);
+            //calculate c1
+            let c1 = (mf - rs) / ((rs - am) ** (1.0 / n));
+            return rs + c1 * (rs - ot) ** (1.0 / n) + s;
+        }
+
+        function clip(value, max, min = -Infinity) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        function drawCurve() {
+            let canvas = document.getElementById(`canvas`);
+            let flowmax = config.heating[currentCh].flowMax;
+            let flowmin = config.heating[currentCh].flowMin;
+            let fmg = Math.ceil(flowmax / 10) * 10 + 5; // flowmax for graph
+            let p;
+
+            canvas.width = parseInt(getComputedStyle(canvas).width);
+            canvas.height = 20 + (fmg - 20) * canvas.width / 100;
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const axes = getCurveAxes();
+            const origin = axes.origin;
+            const xaxis = axes.xaxis;
+            const yaxis = axes.yaxis;
+
+            ctx.lineWidth = 1;
+            ctx.fillStyle = "#FFF";
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "center";
+            ctx.font = '11px sans-serif';
+
+            function drawLine(x1, y1, x2, y2) {
+                let p = getPoint(x1, y1);
+                ctx.moveTo(p.x, p.y);
+                p = getPoint(x2, y2);
+                ctx.lineTo(p.x, p.y);
+            }
+
+            //draw horizontal grid
+            ctx.strokeStyle = "#444";
+            ctx.beginPath();
+            for (let y = yaxis.min; y <= yaxis.max; y += yaxis.step) {
+                drawLine(xaxis.min, y, xaxis.max, y);
+                p = getPoint(0, y);
+                ctx.fillText(y, origin.x - 10, p.y);
+            }
+            ctx.stroke();
+
+            ctx.strokeStyle = "#111";
+            ctx.beginPath();
+            for (let y = yaxis.min + yaxis.step / 2; y <= yaxis.max; y += yaxis.step) {
+                drawLine(xaxis.min, y, xaxis.max, y)
+            }
+            ctx.stroke();
+
+            //draw vertical grid
+            ctx.strokeStyle = "#444";
+            ctx.beginPath();
+            for (let x = xaxis.min; x >= xaxis.max; x -= xaxis.step) {
+                drawLine(x, yaxis.min, x, yaxis.max);
+                p = getPoint(x, 0);
+                ctx.fillText(x, p.x, origin.y + 10);
+            }
+            ctx.stroke();
+            ctx.strokeStyle = "#111";
+            ctx.beginPath();
+            for (var x = xaxis.min - xaxis.step / 2; x >= xaxis.max; x -= xaxis.step) {
+                drawLine(x, yaxis.min, x, yaxis.max);
+            }
+            ctx.stroke();
+
+            //draw x-axis
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#fff";
+            ctx.beginPath();
+            drawLine(xaxis.min, yaxis.min, xaxis.max, yaxis.min);
+            ctx.stroke();
+            ctx.fillText("outside / °C", canvas.width - 55, origin.y - 10);
+
+            //draw y-axis
+            ctx.beginPath();
+            drawLine(xaxis.min, yaxis.min, xaxis.min, yaxis.max);
+            ctx.stroke();
+            ctx.save();
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText("flow / °C", -47, 30);
+            ctx.restore();
+
+            // Keep a local handle to heating config for mode-aware curve drawing.
+            const hcfg = config.heating?.[currentCh] ?? {};
+            if (hcfg.curveMode == CURVE_MODE_MULTIPOINT)
+                hcfg.points = normalizeCurvePoints(hcfg.points);
+            let roomset = roomsetpoint[currentCh];
+            let roomcomp = 0;
+            if (hcfg.roomComp?.enabled ?? false) {
+                const hcs = statuscache?.heatercircuit?.[currentCh] ?? {};
+                if (hcs?.roomtemp !== undefined) {
+                    const e = roomset - hcs.roomtemp;
+                    roomcomp = (hcfg.roomComp?.p ?? 0) * e + hcs.roomcompInteg ?? 0;
+                    // boost
+                    if (e > 1.0)
+                        roomcomp += (hcfg.roomComp?.boost ?? 0) * e;
+                    roomcomp = clip(roomcomp, 12, -5);
                 }
-                let heatCfg = config.heating[hk - 1];
-                let ft = getFlowTemperature(
-                    statuscache.outsideTemp, 
-                    roomsetpoint[hk - 1], 
-                    heatCfg.flowMax, 
-                    heatCfg.exponent, 
-                    heatCfg.gradient, 
-                    heatCfg.offset
-                );
-                let comment = _("#comment" + hk).value;
-                if (heatCfg.marker === undefined)
-                    heatCfg.marker = [];
-                heatCfg.marker.push({
-                    comment: comment,
-                    ot: statuscache.outsideTemp,
-                    ft: Math.round(ft * 10) / 10,
-                    rs: roomsetpoint[hk - 1]
-                });
-                _("#comment" + hk).value = "";
-                drawMarkerTable(hk);
-                drawCurve(hk);
             }
 
-            function addScheduler(channel) {
-                hcfg = config.heating[channel -1];
-                if (!("scheduler" in hcfg))
-                    hcfg["scheduler"] = [];
-                hcfg.scheduler.push({
-                    "days": [],
-                    "time": "8:00",
-                    "temp": 21
-                });
-
-                drawSchedulerTable(channel);
+            function getPoint(ot, ft) {
+                return {
+                    x: origin.x + (xaxis.min - ot) * xaxis.zoom,
+                    y: origin.y - (ft - yaxis.min) * yaxis.zoom
+                }
             }
 
-            let xhrWiFiScan = new XMLHttpRequest();
-            xhrWiFiScan.onload = (e) => {
+            function drawMarkerPoint(p, color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(p.x - 3, p.y - 3, 6, 6);    
+            }
+
+            let otStart = Math.min(roomset, xaxis.min);
+            let ft = getFlowTemperature(otStart, roomset, hcfg);
+            ft = clip(ft, 100, flowmin);
+            let p1 = getPoint(otStart, ft); //foot
+
+            function drawFlowCurve(color, delta=0.0, DeltaPostLimit=false) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                let ft = getFlowTemperature(otStart, roomset, hcfg) + delta;
+                let p = getPoint(otStart, ft); 
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                let otf = false;
+                let utf = false;
+                let fmax = flowmax + (DeltaPostLimit ? delta : 0);
+                let fmin = flowmin + (DeltaPostLimit ? delta : 0);
+                if (ft < fmin) {
+                    utf = true;
+                    ctx.strokeStyle = "#888";
+                }
+
+                for (var ot = otStart; ot >= xaxis.max; ot -= 0.25) {
+                    ft = getFlowTemperature(ot, roomset, hcfg) + delta ;
+
+                    if ((ft > fmax) && !otf) {
+                        p = getPoint(ot, fmax);
+                        ctx.lineTo(p.x, p.y);
+                        p = getPoint(xaxis.max, fmax);
+                        ctx.lineTo(p.x, p.y);
+                        ctx.stroke();
+
+                        ctx.strokeStyle = "#888";
+                        ctx.beginPath();
+                        p = getPoint(ot, ft);
+                        ctx.moveTo(p.x, p.y);
+                        otf = true;
+                        continue;
+                    }
+
+                    p = getPoint(ot, ft);
+                    if (p.y >= origin.y)
+                        ctx.moveTo(p.x, p.y);
+                    else
+                        ctx.lineTo(p.x, p.y);
+
+                    if ((ft >= fmin) && utf) {
+                        utf = false;
+                        ctx.stroke();
+                        
+                        ctx.strokeStyle = color;
+                        ctx.beginPath();
+                        p = getPoint(otStart, fmin);
+                        ctx.moveTo(p.x, p.y);
+                        p = getPoint(ot, fmin);
+                        ctx.lineTo(p.x, p.y);   
+                        continue;
+                    }
+
+                    if (ft >= yaxis.max)
+                        break;
+                }
+                ctx.stroke();
+            }
+
+            if (hcfg.returnLimit.deltaT !== 0)
+                drawFlowCurve("#58F", -hcfg.returnLimit.deltaT, true); // draw return limit curve
+
+            if (roomcomp != 0)
+                drawFlowCurve("#0F0", roomcomp);
+
+            drawFlowCurve("#F00");
+
+            //draw curve's basepoint
+            if ((p1.y <= origin.y) && (roomset <= xaxis.min))
+                drawMarkerPoint(p1, '#F00');
+
+            // Draw configured curve points to verify multipoint input mapping.
+            if ((hcfg.curveMode ?? 0) === CURVE_MODE_MULTIPOINT) {
+                hcfg.points.forEach((pt) => {
+                    const p = getPoint(pt.outside, pt.flow);
+                    drawMarkerPoint(p, '#FFF');
+                });
+            }
+
+            if (statuscache.outsideTemp !== undefined) {
+                //draw outsidetemp & it's flowtemperature
+                let ftsensor = getFlowTemperature(statuscache.outsideTemp, roomset, hcfg) + roomcomp;
+                ftsensor = clip(ftsensor, flowmax, flowmin);
+                let psensor = getPoint(statuscache.outsideTemp, ftsensor);
+                drawMarkerPoint(psensor, '#F83');
+                ctx.strokeStyle = "#F83";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(origin.x, psensor.y);
+                ctx.lineTo(psensor.x, psensor.y);
+                ctx.lineTo(psensor.x, origin.y);
+                ctx.fillText(Math.round(ftsensor * 10) / 10, psensor.x - 20, psensor.y - 12);
+                ctx.stroke();
+            }
+
+            if (curveDrag.active) {
+                ctx.beginPath();
+                let point = config.heating?.[currentCh]?.points?.[curveDrag.idx];
+                let p = getPoint(point.outside ?? 0, point.flow ?? 0);
+                let text = `${point.outside} °C / ${point.flow} °C`;
+                ctx.fillStyle = "#FFF";
+                ctx.fillText(text, p.x, p.y - 13);
+                ctx.stroke();
+
+                ctx.strokeStyle = "#933";
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+
+                ctx.moveTo(origin.x, p.y);
+                ctx.lineTo(p.x, p.y);
+                ctx.lineTo(p.x, origin.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            if (hcfg.returnLimit.deltaT !== 0) {
+                // draw return limit
+                let ftsensor = getFlowTemperature(statuscache.outsideTemp, roomset, hcfg) - hcfg.returnLimit.deltaT;
+                let psensor = getPoint(statuscache.outsideTemp, ftsensor);
+                drawMarkerPoint(psensor, '#68F');
+                ctx.strokeStyle = "#68F";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(origin.x, psensor.y);
+                ctx.lineTo(psensor.x, psensor.y);
+                ctx.lineTo(psensor.x, origin.y);
+                ctx.fillText(Math.round(ftsensor * 10) / 10, psensor.x + 20, psensor.y + 8);
+                ctx.stroke();
+            }
+
+            //draw markers
+            config.heating[currentCh].marker?.forEach(function (m) {
+                drawMarkerPoint(getPoint(m.ot, m.ft), '#3f8');
+            });
+
+            // draw current flow temp
+            let flow = (currentCh == 0) ? statuscache.slave?.flow_t : statuscache.slave?.flow_t2;
+            if (flow !== undefined && flow !== null) {
+                let pf = getPoint(xaxis.min, flow);
+                let flame = statuscache.slave?.status?.flame;
+                ctx.strokeStyle = (flame === true) ? "#fa0" : "#866";
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.beginPath();
+                ctx.moveTo(pf.x , pf.y);
+                ctx.lineTo(pf.x + 9, pf.y + 4);
+                ctx.lineTo(pf.x + 9, pf.y - 4);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            let ret = statuscache.heatercircuit?.[currentCh]?.returnTemp;
+            if (ret !== undefined && ret !== null) {
+                ctx.strokeStyle = "#58f";
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.beginPath();
+                let p = getPoint(xaxis.min, ret);
+                ctx.moveTo(p.x , p.y);
+                ctx.lineTo(p.x + 9, p.y + 4);
+                ctx.lineTo(p.x + 9, p.y - 4);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+
+
+        /*
+         * event handlers for buttons 
+        */
+
+        // scan button
+        function startWifiScan() {
+            _("#scanResults").hidden = true;
+            _("#scanHint").hidden = false;
+            _("#scanbody").innerHTML = "";
+            scanWiFi();
+        }
+
+        // save wifi button
+        function saveWifi() {
+            let xhr = new XMLHttpRequest();
+            xhr.onload = (ev) => {
+            };
+            xhr.open('POST', 'setwifi');
+            xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            let params = "ssid=" + encodeURIComponent(_("#wifissid").value) + 
+                    "&pass=" + encodeURIComponent(_("#wifipass").value); 
+            xhr.send(params);
+        };
+
+        // save button
+        function saveConfig() {
+            let xhr = new XMLHttpRequest();
+            xhr.onload = (ev) => {
+                alert("configuration saved successfully");
+            };
+            xhr.open("POST", "config");
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(JSON.stringify(config));
+        };
+
+        function reboot() {
+            fetch("/reboot");
+            //let xhr = new XMLHttpRequest();
+            //xhr.open("GET", "/reboot");
+            //xhr.send("");
+        };
+
+        function addMarker() {
+            if (statuscache.outsideTemp == null) {
+                alert("No outside temperature available!");
+                return;
+            }
+            let heatCfg = config.heating[currentCh];
+            // Use selected curve mode to compute marker flow temperature.
+            let ft = getFlowTemperature(
+                statuscache.outsideTemp,
+                roomsetpoint[currentCh],
+                heatCfg
+            );
+            let comment = _("#comment").value;
+            if (heatCfg.marker === undefined)
+                heatCfg.marker = [];
+            heatCfg.marker.push({
+                comment: comment,
+                ot: statuscache.outsideTemp,
+                ft: Math.round(ft * 10) / 10.0,
+                rs: roomsetpoint[currentCh]
+            });
+            heatCfg.marker.sort((a, b) => a.ot - b.ot);
+            _("#comment").value = "";
+            drawMarkerTable();
+            drawCurve();
+        }
+
+        function exportItem() {
+            switch (_("#selExport").value) {
+            case "config":
+                exportJson(config, "config");
+                break;
+
+            case "status":
+                exportJson(statuscache, "status");
+                break;
+
+            case "log":
+                exportLog();
+                break;
+
+            case "OT items":
+                exportOtItems();
+                break;
+            }
+        }
+
+        function exportLog() {
+            let logContent = "";
+            _("#console").childNodes.forEach((child) => {
+                if (child.textContent) {
+                    logContent += child.textContent + "\n";
+                }
+            });
+            let blob = new Blob([logContent], { type: "text/plain" });
+            let url = URL.createObjectURL(blob);
+            let link = document.createElement("a");
+            link.href = url;
+            link.download = getSaveFilename("log", "txt");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
+
+        function exportJson(obj, name) {
+            const jsonStr = JSON.stringify(obj, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = _$("a");
+            a.href = url;
+            a.download = getSaveFilename(name, "json");
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportOtItems() {
+            fetch("/otitems")
+                .then(resp => {
+                    if (!resp.ok) throw new Error("HTTP " + resp.status);
+                    return resp.json();
+                })
+                .then(data => {
+                    exportJson(data, "ot_items");
+                })
+                .catch(err => {
+                    alert("Error exporting OT items:\n" + err.message);
+                });
+        }
+
+        function importConfig() {
+            _("#restore_file").click();
+        }
+
+        function sendOtRequest() {
+            let id = 4; // ID remote request
+            let rw = 0; // write
+            let data = _("#selRequest").value;
+            _("#modalBody").textContent = "Request running...";
+            _("#dlgSlaveRequest").hidden = false;
+
+            fetch(`/slaverequest?id=${id}&rw=${rw}&data=${data}`)
+                .then(resp => {
+                    if (!resp.ok) throw new Error("HTTP " + resp.status);
+                    return resp.json();
+                })
+                .then(data => {
+                    let rc = parseInt(data["data"], 16) & 0xff;
+
+                    if (rc >= 128)
+                        _("#modalBody").innerHTML = "ACCEPTED<br>";
+                    else
+                        _("#modalBody").innerHTML = "REFUSED<br>";
+                    
+                    _("#modalBody").innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                })
+                .catch(err => {
+                    _("#modalBody").textContent = "Error:\n" + err.message;
+                });
+        };
+
+        function checkFirmwareUpdate() {
+            _("#checkbtn").disabled = true;
+            _("#installbtn").innerText = "checking...";
+            _("#installbtn").disabled = true;
+            fetch("/checkupdate");
+        };
+
+        function installFirmwareUpdate() {
+            _("#installbtn").disabled = true;
+            _("#installbtn").innerText = "installing...";
+            fetch("/install", {method: 'POST'});
+        };
+
+        // copy simplecurve to multipoint curve
+        function copyCurve() {
+            let hcfg = config.heating[currentCh];
+            hcfg.points = [];
+
+            const numPoints = getNumCurvePoints();
+            const rs = roomsetpoint[currentCh];
+            const outmin = getCurveAxes().xaxis.min;
+            const outmax = getCurveAxes().xaxis.max;
+
+            const step = (outmax - outmin) / (numPoints-1);
+            for (let i=0; i<numPoints; i++) {
+                let ot = outmin + i * step;
+                let flow = getFlowTemperatureSimple(ot, rs, hcfg);
+                hcfg.points.push({
+                    outside: Math.round(ot * 10) / 10.0,
+                    flow: Math.round(flow * 10) / 10.0
+                });
+            }
+            drawCurve();
+        }
+
+        function clearLog() {
+            _("#console").innerHTML = "";
+        };
+
+        function toggleAutoScroll(ev) {
+            ev.target.classList.toggle("pressed");
+            autoscroll = !autoscroll;
+        }
+
+        function closeModal() {
+            _("#dlgSlaveRequest").hidden = true;
+        }
+
+        function getSaveFilename(item, ext) {
+            let result = "otthing_";
+            result += (statuscache?.wifi?.mac ?? "").slice(8);
+            result += `_${item}.${ext}`;
+            return result.replace(/:/g, '');
+        }
+
+        function scanWiFi() {
+            let xhr = new XMLHttpRequest();
+            xhr.onload = (e) => {
                 let scanObj = JSON.parse(e.target.responseText);
                 if (scanObj.status < 0) {
-                    setTimeout(scanWiFi, 1000);
+                    setTimeout(scanWiFi, 2000);
                     return;
                 }
 
@@ -2182,30 +2703,54 @@
                 });
             };
             
-            function scanWiFi() {
-                xhrWiFiScan.open("GET", "scan");    
-                xhrWiFiScan.send();
-            }
+            xhr.open("GET", "scan");    
+            xhr.send();
+        }
 
-            __("select").forEach((ele, index) => {
-                ele.onchange = (ev) => {
-                    var f = ele.getAttribute('field');
-                    if (f == null)
-                        return;
-                    f = f.split('.');
-                    val = config;
-                    var i;
-                    for (i=0; i<f.length-1; i++) {
-                        if (!(f[i] in val))
-                            val[f[i]] = {}
-                        val = val[f[i]];
+
+        window.onload = () => {
+            __("div.nav li").forEach(li => {
+                li.onclick = ev => {
+                    __("div.nav li").forEach(x => x.classList.remove("active"));
+                    __(".tab").forEach(x => x.hidden = true);
+
+                    _(`#${li.getAttribute("tab")}`).hidden = false;
+                    li.classList.add("active");
+
+                    if (li.hasAttribute("channel")) {
+                        const newCh = parseInt(li.getAttribute("channel"));
+                        if (newCh != currentCh) {
+                            currentCh = newCh;
+                            updateUi(_("#heatingcurve"));
+                            updateStatusValues(_("#heatingcurve"));
+                        }
                     }
-                    val[f[i]] = parseInt(ev.target.value);
-                    ev.target.parentElement.querySelectorAll("div.selopt").forEach((ele, index) => {
-                        ele.hidden = (index != ev.target.selectedIndex);
-                    });
-                }
+                };
             });
+            _("div.nav li.active").click();
+
+            _("#title").onclick  = (ev) => {
+                if (window.location.protocol == "file:")
+                    _("#inject_status").click();
+            };
+
+            _("#inject_status").onchange = (ev) => {
+                const file = ev.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const status = JSON.parse(e.target.result);
+                            // Update statuscache
+                            Object.assign(statuscache, status);
+                            consumeStatusCache();
+                        } catch (error) {
+                            alert("Invalid JSON file: " + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
 
             _("#selectOutsideTempSource").addEventListener("change", (ev) => {
                 _("#owdiv").hidden = (ev.target.value != 4);
@@ -2230,17 +2775,35 @@
                 })
             });
 
-            function drawMarkerTable(hk) {
-                if (hk === undefined) {
-                    drawMarkerTable(1);
-                    drawMarkerTable(2);
-                    return;
+            __('input[name="otMode"]').forEach(function (item) {
+                item.onclick = (ev) => {
+                    __('.otmode-repeater, .otmode-master, .otmode-test').forEach(function(ele) {
+                        ele.hidden = true;
+                    });
+                    switch (parseInt(item.value)) {
+                        case 1:
+                            // show elements for master mode
+                            __('.otmode-master').forEach(function(ele) {
+                                 ele.hidden = false;
+                            });
+                            break;
+                        case 2:
+                            // show elements for repeater mode
+                            __('.otmode-repeater').forEach(function(ele) {
+                                 ele.hidden = false;
+                            });
+                            break;
+                        default:
+                            break;
+                    }                    
                 }
-                _("#markerbody" + hk).innerHTML = "";
-                
+            });
+
+            function drawMarkerTable() {
+                _("#markerbody").innerHTML = "";
                 var i = 0;
-                config.heating[hk - 1].marker?.forEach(function (item) {
-                    _(`#markerbody${hk}`).append(
+                config.heating[currentCh].marker?.forEach(function (item) {
+                    _(`#markerbody`).append(
                         _$("tr", {}, 
                             _$("td", {textContent: item.comment}),
                             _$("td", {textContent: (item.rs || "-") + " °C"}),
@@ -2251,87 +2814,64 @@
                                     className: "rmmarker", 
                                     textContent: "-",
                                     onclick: (ev) => {
-                                        config.heating[hk - 1].marker.splice(ev.target.getAttribute("index"), 1);
-                                        drawMarkerTable(hk);
-                                        drawCurve(hk);
+                                        config.heating[currentCh].marker.splice(ev.target.getAttribute("index"), 1);
+                                        drawMarkerTable();
+                                        drawCurve();
                                     }
                                 })
                             )
                         )
                     );
-
-                    _(`#markerbody${hk} tr:last-child button`).setAttribute("index", i++);
+                    _(`#markerbody tr:last-child button`).setAttribute("index", i++);
                 });
             }
 
-            function drawSchedulerTable(channel) {
-                if (channel === undefined) {
-                    drawSchedulerTable(1);
-                    drawSchedulerTable(2);
-                    return;
-                }
-                _("#schedulerbody" + channel).innerHTML = "";
-                
-                var i = 0;
-                config.heating[channel - 1].scheduler.forEach(function (item) {
-                    _(`#schedulerbody${channel}`).append(
-                        _$("tr", {}, 
-                            _$("td", {}),
-                            _$("td", {textContent: item.time}),
-                            _$("td", {textContent: item.temp + " °C"}),
-                            _$("td", {},
-                                _$("button", {
-                                    className: "rmscheduler", 
-                                    textContent: "-",
-                                    onclick: (ev) => {
-                                        config.heating[channel - 1].scheduler.splice(ev.target.getAttribute("index"), 1);
-                                        drawSchedulerTable(channel);
-                                    }
-                                })
-                            )
-                        )
-                    );
+            function getConfigValFromPath(path, def=false) {
+                path = path.replace('$', currentCh);
 
-                    _(`#schedulerbody${channel} tr:last-child button`).setAttribute("index", i++);
-                });
-            }
-
-            function setParam(name, val) {
-                var slider = _('#' + name + " input[type=range]");
-                if (val !== undefined)
-                    slider.value = val;
-                else
-                    val = "?";
-                _("#" + name + " span.value").innerHTML = val;
-            }
-
-            function initRangeParam(name, configPath) {
-                var cfgVal = config;
-                let p = configPath.split('.');
+                var cfgVal = def ? defaultConfig : config;
+                let p = path.split('.');
                 for (var i=0, len = p.length; i<len; i++) {
                     if ( (cfgVal[p[i]] === undefined) && (i<len-1) )
                         cfgVal[p[i]] = {};
                     cfgVal = cfgVal[p[i]];
                 };
 
-                setParam(name, cfgVal);
+                if (cfgVal != null)
+                    return cfgVal;
+                
+                if (def) {
+                    console.log("No default value for " + path)
+                    return null;
+                }
+                else
+                    return getConfigValFromPath(path, true);
+            }
 
-                var slider = _('#' + name + " input[type=range]");
-                var path = configPath;
-                slider.addEventListener("input", (ev) => {
-                    setParam(name, ev.target.value);
+            function setConfigVal(path, val) {
+                if (Number.isNaN(val))
+                    return;
 
-                    var cfgVal = config;
-                    var p = path.split('.')
-                    for (var i=0, len = p.length; i<len; i++) {
-                        if (i<len-1) {
-                            cfgVal = cfgVal[p[i]];
-                        }
-                        else
-                            cfgVal[p[i]] = parseFloat(ev.target.value);
-                    };
-                    drawCurve();
-                });
+                path = path.replace('$', currentCh);
+                let cfgVal = config;
+
+                var p = path.split('.')
+                for (var i=0, len = p.length; i<len; i++) {
+                    if (i<len-1)
+                        cfgVal = cfgVal[p[i]];
+                    else
+                        cfgVal[p[i]] = val;
+                };
+            }
+
+            function setRangeParam(ele) {
+                var slider = _("input[type=range]", ele);
+                var val = getConfigValFromPath(ele.getAttribute("field"));
+                if (val !== undefined)
+                    slider.value = val;
+                else
+                    val = "?";
+                _("span.value", ele).innerHTML = val;
             }
 
             let xhrConfig = new XMLHttpRequest();
@@ -2341,113 +2881,224 @@
                 }
                 catch (err) {
                 }
-                configToUi();
+                initUi();
             };
             xhrConfig.onerror = (ev) => {
-                configToUi();
+                initUi();
             };
             xhrConfig.open("GET", "config");
             xhrConfig.send();
-            function configToUi() {
-                _("#hostname").value = config.hostname || "otthing";
-                _("#haPrefix").value = config.haPrefix || "homeassistant";
-                _("#selTimezone").value = config.timezone || 3600;
-                let otradio = _('input[name="otMode"][value="' + config.otMode + '"]');
-                if (otradio !== undefined) {
-                    otradio.checked = true;
-                    otradio.dispatchEvent(new Event('click'));
-                }
 
-                _("#slaveapp").value = config.slaveApp || 0;
-                _("#slaveapp").dispatchEvent(new Event('change'));
-                _("#enableslave").checked = config.enableSlave || false;
+            
 
-                _("#masterMemberId").value = config.masterMemberId || 8;
+            function getElementValue(ele) {
+                let val = ele.value;
+                if (ele.hasAttribute("intval"))
+                    val = parseInt(val);
+                else if (ele.hasAttribute("floatval"))
+                    val = parseFloat(val);
+                return val;
+            }
 
-                _("#selectOutsideTempSource").value = config.outsideTemp.source;
-                _("#selectOutsideTempSource").dispatchEvent(new Event('change'));
-                _("#inpapikey").value = config.outsideTemp.apikey || null;
-                _("#inplat").value = config.outsideTemp.lat || null;
-                _("#inplon").value = config.outsideTemp.lon || null;
-                _("#inpinterval").value = config.outsideTemp.interval || null;
-                _("#oneWireOutsideTempAdr").value = config.outsideTemp.adr || "";
+            function updateUi(root=document) {
+                __('input[type="text"], input[type="password"]', root).forEach(ele => {
+                    if (!ele.hasAttribute('field') || ele.hidden)
+                        return;
 
-                _("#mqttHost").value = config.mqtt.host || null;
-                _("#mqttPort").value = config.mqtt.port || 1883;
-                _("#mqttTls").checked = config.mqtt.tls || false;
-                _("#mqttUser").value = config.mqtt.user || null;
-                _("#mqttPass").value = config.mqtt.pass || null;
-                _("#mqttKeepAlive").value = config.mqtt.keepAlive || 15;
-
-                _("#dhwOn").checked = config.boiler.dhwOn;
-                _("#coolOn").checked = config.boiler.coolOn;
-                _("#overrideDhw").checked = config.boiler.overrideDhw;
-                initRangeParam("dhwtemp", "boiler.dhwTemperature");
-                initRangeParam("maxModulation", "boiler.maxModulation");
-
-                _("#otc").checked = config.boiler.otc;
-                _("#summerMode").checked = config.boiler.summerMode;
-                _("#dhwBlocking").checked = config.boiler.dhwBlocking;
-
-                if (config.heating === undefined)
-                    config.heating = [{}, {}];
-
-                config.heating.forEach((hcfg, idx) => {
-                    let ch = idx + 1;
-
-                    _(`#chOn${ch}`).checked = hcfg.chOn || false;
-                    _(`#overrideFlow${ch}`).checked = hcfg.overrideFlow || false;
-                    _(`#roomset${ch}`).addEventListener("input", (ev) => {
-                        roomsetpoint[idx] = parseFloat(ev.target.value);
-                    });
-                    _(`#enableHyst${ch}`).checked = hcfg.enableHyst || false;
-                    _(`#roomCompEnable${ch}`).checked = hcfg.roomComp?.enabled || false;
-
-                    initRangeParam(`chset${ch}`, `heating.${idx}.flow`);
-                    initRangeParam(`roomset${ch}`, `heating.${idx}.roomsetpoint.temp`);
-                    initRangeParam(`flowmax${ch}`, `heating.${idx}.flowMax`);
-                    initRangeParam(`exponent${ch}`, `heating.${idx}.exponent`);
-                    initRangeParam(`gradient${ch}`, `heating.${idx}.gradient`);
-                    initRangeParam(`offset${ch}`, `heating.${idx}.offset`);
-                    initRangeParam(`roomCompP${ch}`, `heating.${idx}.roomComp.p`);
-                    initRangeParam(`roomCompI${ch}`, `heating.${idx}.roomComp.i`);
-                    initRangeParam(`roomCompBoost${ch}`, `heating.${idx}.roomComp.boost`);
-                    initRangeParam(`hyst${ch}`, `heating.${idx}.hysteresis`);
-
-                     if ('roomtemp' in hcfg) {
-                        _(`#selectRoomTempSource${ch}`).value = hcfg.roomtemp.source;
-                        if (hcfg.roomtemp.source == 2)
-                            _(`#bleRoomTempAdr${ch}`).value = hcfg.roomtemp.adr;
-                     }
-                    _(`#selectRoomTempSource${ch}`).dispatchEvent(new Event('change'));
-
-                    if ('roomsetpoint' in hcfg)
-                        _(`#selectRoomSetpointSource${ch}`).value = hcfg.roomsetpoint.source;
-                    _(`#selectRoomSetpointSource${ch}`).dispatchEvent(new Event('change'));
+                    let path = ele.getAttribute('field');
+                    ele.value = getConfigValFromPath(path);
                 });
 
-                _("#ventEnable").checked = config.vent?.ventEnable ?? false;
-                _("#openBypass").checked = config.vent?.openBypass ?? false;
-                _("#autoBypass").checked = config.vent?.autoBypass ?? false;
-                _("#freeVentEnable").checked = config.vent?.freeVentEnable ?? false;
+                __('input[type="checkbox"]', root).forEach(ele => {
+                    if (!ele.hasAttribute('field'))
+                        return;
+                    let path = ele.getAttribute('field');
+                    ele.checked = getConfigValFromPath(path);
+                    ele.dispatchEvent(new Event("change"));
+                });
 
-                initRangeParam("ventsetpoint", "vent.setpoint");
+                __(".range", root).forEach(ele => {
+                    setRangeParam(ele);
+                });
+
+                __("select", root).forEach(ele => {
+                    if (!ele.hasAttribute('field') || ele.hidden)
+                        return;
+
+                    let val = getConfigValFromPath(ele.getAttribute('field'));
+                    if ((val === null) || (val === ""))
+                        return;
+
+                    ele.value = val;
+                    if (!Array.from(ele.options).some(opt => opt.value === String(val))) {
+                        ele.append(_$("option", {textContent: val, value: val}));
+                        ele.value = val;
+                    }
+                    else {
+                        ele.dispatchEvent(new Event('change'));
+                    }
+                });
+
+                __('input[type="radio"]', root).forEach(ele => {
+                    if (!ele.hasAttribute('field'))
+                        return;
+
+                    let path = ele.getAttribute('field');
+                    let val = getElementValue(ele);
+
+                    if (val == getConfigValFromPath(path)) {
+                        ele.checked = true;
+                        ele.dispatchEvent(new Event('click'));
+                    }   
+                });
+
+                let hcfg = config.heating[currentCh] ?? {};
+                
+                if (!('points' in hcfg))
+                    copyCurve();
+
+                _("#curveMode").checked = (hcfg.curveMode ?? 0) === CURVE_MODE_MULTIPOINT;
+                _("#curveMode").dispatchEvent(new Event("change"));
+
                 drawMarkerTable();
                 drawCurve();
-                __('input[type="checkbox"][hideele]').forEach(cb => {
-                    cb.dispatchEvent(new Event("change"));
+            }
+
+            function initUi() {
+                __('input[type="text"], input[type="password"]').forEach(ele => {
+                    if (!ele.hasAttribute('field'))
+                        return;
+
+                    let path = ele.getAttribute('field');
+                    ele.addEventListener("input", (ev) => {
+                        setConfigVal(path, getElementValue(ev.target));
+                    });
+                });
+
+                __('input[type="checkbox"]').forEach(ele => {
+                    if (!ele.hasAttribute('field'))
+                        return;
+
+                    let path = ele.getAttribute('field');
+                    ele.addEventListener("input", (ev) => {
+                        setConfigVal(path, ev.target.checked);
+                    });
+                });
+
+                __(".range").forEach(ele => {
+                    let slider = _("input[type=range]", ele);
+                    let path = ele.getAttribute("field");
+                    slider.addEventListener("input", (ev) => {
+                        setConfigVal(path, parseFloat(ev.target.value));
+                        setRangeParam(ele);
+                    });
+                });
+
+                __("select").forEach(ele => {
+                    if (!ele.hasAttribute('field'))
+                        return;
+
+                    let path = ele.getAttribute('field');
+
+                    ele.addEventListener("change", (ev) => {
+                        setConfigVal(path, getElementValue(ev.target));
+
+                        __("div.selopt", ev.target.parentElement).forEach((ele, index) => {
+                            ele.hidden = (index != ev.target.selectedIndex);
+                        });
+                    });
+                });
+
+                __('input[type="radio"]').forEach(ele => {
+                    if (!ele.hasAttribute('field'))
+                        return;
+
+                    let path = ele.getAttribute('field');
+                    ele.addEventListener("click", (ev) => {
+                        setConfigVal(path, getElementValue(ev.target));
+                    });
+                });
+
+                _(`#roomset`).addEventListener("input", (ev) => {
+                    roomsetpoint[currentCh] = parseFloat(ev.target.value);
+                });
+
+                if (config.heating === undefined)
+                    config.heating = defaultConfig.heating;
+
+                _("#curveMode").onchange = (ev) => {
+                    const cv = ev.target.checked ? CURVE_MODE_MULTIPOINT : CURVE_MODE_SIMPLE;
+                    config.heating[currentCh].curveMode = cv;
+                    __(`#heatingcurve .linear-only`).forEach((el) => {
+                        el.hidden = config.heating[currentCh].curveMode != CURVE_MODE_SIMPLE;
+                    });
+                    __(`#heatingcurve .curve-only`).forEach((el) => {
+                        el.hidden = config.heating[currentCh].curveMode != CURVE_MODE_MULTIPOINT;
+                    });
+                    drawCurve();
+                }
+
+                __('input[type="checkbox"][hideele]').forEach(ele => {
+                    ele.dispatchEvent(new Event("change"));
+                });
+
+                __(".curveparam").forEach(ele => {
+                    ele.addEventListener("input", (ev) => {
+                        drawCurve();
+                    });
+                });
+
+                // Enable drag & drop for curve points
+                initCurveDrag();
+                updateUi();
+            }
+
+            function updateStatusValues(root) {
+                __(".statusvalue", root).forEach((ele) => {
+                    var val = null;
+                    if (!ele.hasAttribute('field'))
+                        return;
+                    try {
+                        var f = ele.getAttribute('field');
+                        f = f.replace('$', currentCh).split('.');
+                        val = statuscache;
+                        for (var i=0; i<f.length; i++)
+                            val = val[f[i]];
+                        
+                        if ((val !== null) && (val !== undefined)) {
+                            const isErr = ele.classList.contains("error");
+                            if (val === true) {
+                                ele.classList.add(isErr ? "bool-error" : "bool-ok");
+                                ele.classList.remove(isErr ? "bool-ok" :"bool-off");
+                            }
+                            else if (val === false) {
+                                ele.classList.add(isErr ? "bool-ok" : "bool-off");
+                                ele.classList.remove(isErr ? "bool-error" : "bool-on");
+                            }
+                            else
+                                ele.textContent = val;
+                        }
+                        else
+                            ele.textContent = "---";
+                        
+                        if (ele.hasAttribute('unit'))
+                            ele.textContent += ' ' + ele.getAttribute('unit');
+                    }
+                    catch (ex) {
+                        val = null;
+                    }
+
+                    if ( ((val !== null) && (val !== undefined)) || ele.classList.contains("nohide") )
+                        ele.parentElement.hidden = false;
+                    else
+                        if (window.location.protocol == "file:")
+                            ele.textContent = "?";
+                        else
+                            ele.parentElement.hidden = true;
                 });
             }
 
-            var xhrStatus = new XMLHttpRequest();
-            xhrStatus.timeout = 3000;
-            xhrStatus.onload = (ev) => {
-                try {
-                    statuscache = JSON.parse(ev.target.responseText);
-                }
-                catch (err) {
-                }
-
+            function consumeStatusCache() {
                 _("#nocon").hidden = true;
 
                 let rtstr = "";
@@ -2497,44 +3148,7 @@
                     }
                 }
 
-                __(".statusvalue").forEach((ele) => {
-                    var val = null;
-                    if (!ele.hasAttribute('field'))
-                        return;
-                    try {
-                        var f = ele.getAttribute('field').split('.');
-                        val = statuscache;
-                        for (var i=0; i<f.length; i++)
-                            val = val[f[i]];
-                        
-                        if ((val !== null) && (val !== undefined)) {
-                            const isErr = ele.classList.contains("error");
-                            if (val === true) {
-                                ele.classList.add(isErr ? "bool-error" : "bool-ok");
-                                ele.classList.remove(isErr ? "bool-ok" :"bool-off");
-                            }
-                            else if (val === false) {
-                                ele.classList.add(isErr ? "bool-ok" : "bool-off");
-                                ele.classList.remove(isErr ? "bool-error" : "bool-on");
-                            }
-                            else
-                                ele.textContent = val;
-                        }
-                        else
-                            ele.textContent = "---";
-                        
-                        if (ele.hasAttribute('unit'))
-                            ele.textContent += ' ' + ele.getAttribute('unit');
-                    }
-                    catch (ex) {
-                        val = null;
-                    }
-
-                    if ( ((val !== null) && (val !== undefined)) || ele.classList.contains("nohide") )
-                        ele.parentElement.hidden = false;
-                    else
-                        ele.parentElement.hidden = true;
-                });
+                updateStatusValues();
 
                 __(".mqttbasetopic").forEach((ele) => {
                     ele.innerHTML = statuscache.mqtt.basetopic;
@@ -2542,24 +3156,15 @@
 
                 if ("1wire" in statuscache) {
                     __(".oneWireAdr").forEach((ele) => {
-                        if (ele.childElementCount == 0) {
-                            for (adr in statuscache["1wire"])
+                        for (adr in statuscache["1wire"]) {
+                            if (!Array.from(ele.options).some(opt => opt.value === adr))
                                 ele.append(_$("option", {textContent: adr}));
-
-                            if ( (ele == _("#oneWireRoomTempAdr1")) && (config.heating[0].roomtemp.source == 3) )
-                                ele.value = config.heating[0].roomtemp.adr;
-
-                            else if ( (ele == _("#oneWireRoomTempAdr2")) && (config.heating[1].roomtemp.source == 3) )
-                                ele.value = config.heating[1].roomtemp.adr;
-
-                            else if ( (ele == _("#oneWireOutsideTempAdr")) && (config.outsideTemp.source == 3) )
-                                ele.value = config.outsideTemp.adr;
                         }
                     });
 
-                    var i = 1;
-                    for (adr in statuscache["1wire"]) {
-                        if (_("#oneWireSensors").childElementCount < Object.keys(statuscache["1wire"]).length) {
+                    if (_("#oneWireSensors").childElementCount != Object.keys(statuscache["1wire"]).length) {
+                        _("#oneWireSensors").innerHTML = "";
+                        for (adr in statuscache["1wire"]) {
                             _("#oneWireSensors").append(
                                 _$("div", {className: "statusfield"},
                                     _$("h5", {textContent: adr}),
@@ -2567,6 +3172,10 @@
                                 )
                             );
                         }
+                    }
+
+                    let i = 1;
+                    for (adr in statuscache["1wire"]) {
                         _("#oneWireSensors div:nth-child(" + i + ") span").innerText = statuscache["1wire"][adr] + " °C";
                         i++;
                     }
@@ -2613,24 +3222,47 @@
                 }
                 
                 drawCurve();
-                setTimeout(fetchStatus, 5000);
-            };
-            xhrStatus.ontimeout = (ev) => {
-                _("#nocon").hidden = false;
-                setTimeout(fetchStatus, 10000);
-            };
+            }
 
             function fetchStatus() {
-                xhrStatus.open("GET", "status");
-                xhrStatus.send();
+                var xhr = new XMLHttpRequest();
+                xhr.timeout = 5000;
+                xhr.onload = (ev) => {
+                    try {
+                        statuscache = JSON.parse(ev.target.responseText);
+                    }
+                    catch (err) {
+                    }
+
+                    consumeStatusCache();
+                    setTimeout(fetchStatus, 5000);
+                };
+                xhr.ontimeout = (ev) => {
+                    _("#nocon").hidden = false;
+                    setTimeout(fetchStatus, 3000);
+                };
+                xhr.open("GET", "status");
+                xhr.send();
             }
             fetchStatus();
             drawCurve();
 
-            _("#reboot").onclick = (ev) => {
-                let xhr = new XMLHttpRequest();
-                xhr.open("GET", "/reboot");
-                xhr.send("");
+            _("#restore_file").onchange = (ev) => {
+                const file = ev.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const restoredConfig = JSON.parse(e.target.result);
+                            // Update the global config object
+                            Object.assign(config, restoredConfig);
+                            updateUi();
+                        } catch (error) {
+                            alert("Invalid JSON file: " + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
             };
 
             var xhrUpl = new XMLHttpRequest();
@@ -2672,55 +3304,13 @@
                 xhrUpl.send(formdata);
             };
 
-            _("#checkbtn").onclick = (ev) => {
-                let xhrCheck = new XMLHttpRequest;
-                xhrCheck.open('post', '/checkupdate');
-                _("#checkbtn").disabled = true;
-                _("#installbtn").innerText = "checking...";
-                _("#installbtn").disabled = true;
-                xhrCheck.send('');
-            };
-
-            _("#installbtn").onclick = (ev) => {
-                let xhrInstall = new XMLHttpRequest;
-                _("#installbtn").disabled = true;
-                _("#installbtn").innerText = "installing...";
-                xhrInstall.open('post', '/install');
-                xhrInstall.send('');
-            };
-
-            let otModeItems = __('input[name="otMode"]');
-            otModeItems.forEach(function (item) {
-                item.onclick = (ev) => {
-                    __('.otmode-repeater, .otmode-master, .otmode-test').forEach(function(ele) {
-                        ele.hidden = true;
-                    });
-                    switch (parseInt(item.value)) {
-                        case 1:
-                            // show elements for master mode
-                            __('.otmode-master').forEach(function(ele) {
-                                 ele.hidden = false;
-                            });
-                            break;
-                        case 2:
-                            // show elements for repeater mode
-                            __('.otmode-repeater').forEach(function(ele) {
-                                 ele.hidden = false;
-                            });
-                            break;
-                        default:
-                            break;
-                    }                    
-                }
-            });
-
             function connectWS() {
                 function logws(msg) {
                     let e = _$("div");
                     e.innerHTML = msg;
                     let cons = _("#console");
                     cons.append(e);
-                    if (!_("#btnautoscroll").classList.contains("pressed"))
+                    if (autoscroll)
                         cons.scrollTop = cons.scrollHeight;
                 }
 
@@ -2745,252 +3335,7 @@
                 }
             }
             connectWS();
-
-            _("#btnclearlog").onclick = (ev) => {
-                _("#console").innerHTML = "";
-            };
-
-            _("#btnsavelog").onclick = (ev) => {
-                let logContent = "";
-                _("#console").childNodes.forEach((child) => {
-                    if (child.textContent) {
-                        logContent += child.textContent + "\n";
-                    }
-                });
-                let blob = new Blob([logContent], { type: "text/plain" });
-                let url = URL.createObjectURL(blob);
-                let link = document.createElement("a");
-                link.href = url;
-                link.download = "log_otthing.txt";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            };
-
-            _("#btnautoscroll").onclick = (ev) => {
-                ev.target.classList.toggle("pressed");
-            }
         };
-
-        function getMinOutsideTemp(rs, mf, g) {
-            return rs - (mf - rs) / g; //minimal outside temperature at mf
-        }
-
-        /*
-            ot: outside temperature
-            rs: room set temperature
-            mf: max. flow temperature
-            n: heating exponent
-            g: gradient
-            s: shift
-        */
-        function getFlowTemperature(ot, rs, mf, n, g, s) {
-            let am = getMinOutsideTemp(rs, mf, g);
-            //calculate c1
-            let c1 = (mf - rs) / ((rs - am) ** (1.0 / n));
-            return rs + c1 * (rs - ot) ** (1.0 / n) + s;
-        }
-
-        function drawCurve(hk) {
-            if (hk === undefined) {
-                drawCurve(1);
-                drawCurve(2);
-                return;
-            }
-            var canvas = document.getElementById(`canvas${hk}`);
-            let flowmax = parseFloat(_("#flowmax" + hk + " input").value);
-            let fmg = Math.ceil(flowmax / 10) * 10 + 5; // flowmax for graph
-
-            canvas.height = 20 + (fmg - 20) * 4.5;
-            var ctx = canvas.getContext("2d");
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            let origin = {
-                x: 20,
-                y: canvas.height - 20
-            };
-            let xaxis = {
-                min: 20, // °C
-                max: -20, // °C
-                step: 5,
-                zoom: (canvas.width - origin.x * 2) / (20 - (-20))
-            };
-            let yaxis = {
-                min: 20, // °C
-                max: fmg, // °C
-                step: 10,
-                zoom: (canvas.height - (canvas.height - origin.y) * 2) / (fmg - 20)
-            };
-
-            ctx.lineWidth = 1;
-            ctx.strokeStyle = "#666";
-            ctx.fillStyle = "#FFF";
-            ctx.textBaseline = "middle";
-            ctx.textAlign = "center";
-            ctx.font = '11px sans-serif';
-
-            //draw horizontal grid
-            ctx.beginPath();
-            for (var i = yaxis.min; i <= yaxis.max; i += yaxis.step) {
-                let y = origin.y - (i - yaxis.min) * yaxis.zoom;
-                ctx.moveTo(origin.x, y);
-                ctx.lineTo(origin.x + (xaxis.min - xaxis.max) * xaxis.zoom, y);
-                ctx.fillText(i, origin.x - 10, y);
-            }
-            ctx.stroke();
-            ctx.strokeStyle = "#333";
-            ctx.beginPath();
-            for (var i = yaxis.min + yaxis.step / 2; i <= yaxis.max; i += yaxis.step) {
-                let y = origin.y - (i - yaxis.min) * yaxis.zoom;
-                ctx.moveTo(origin.x, y);
-                ctx.lineTo(origin.x + (xaxis.min - xaxis.max) * xaxis.zoom, y);
-            }
-            ctx.stroke();
-
-            ctx.strokeStyle = "#666";
-            //draw vertical grid
-            ctx.beginPath();
-            for (var i = xaxis.min; i >= xaxis.max; i -= xaxis.step) {
-                let x = origin.x + (xaxis.min - i) * xaxis.zoom;
-                ctx.moveTo(x, origin.y);
-                ctx.lineTo(x, origin.y - (yaxis.max - yaxis.min) * yaxis.zoom);
-                ctx.fillText(i, x, origin.y + 10);
-            }
-            ctx.stroke();
-            ctx.strokeStyle = "#333";
-            ctx.beginPath();
-            for (var i = xaxis.min - xaxis.step / 2; i >= xaxis.max; i -= xaxis.step) {
-                let x = origin.x + (xaxis.min - i) * xaxis.zoom;
-                ctx.moveTo(x, origin.y);
-                ctx.lineTo(x, origin.y - (yaxis.max - yaxis.min) * yaxis.zoom);
-                ctx.stroke();
-            }
-            ctx.stroke();
-
-            ctx.lineWidth = 2;
-            ctx.strokeStyle = "#fff";
-
-            //draw x-axis
-            ctx.beginPath();
-            ctx.moveTo(origin.x, origin.y);
-            ctx.lineTo(origin.x + (xaxis.min - xaxis.max) * xaxis.zoom, origin.y);
-            ctx.stroke();
-            ctx.fillText("outside / °C", canvas.width - 55, origin.y - 10);
-
-            //draw y-axis
-            ctx.beginPath();
-            ctx.moveTo(origin.x, origin.y);
-            ctx.lineTo(origin.x, origin.y - (yaxis.max - yaxis.min) * yaxis.zoom);
-            ctx.stroke();
-            ctx.save();
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText("flow / °C", -47, 30);
-            ctx.restore();
-
-            let roomset = roomsetpoint[hk - 1];
-            let roomdelta = 0;
-            let rc = config.heating?.[hk-1]?.roomComp;
-            if (rc?.enabled === true) {
-                const hcs = statuscache?.heatercircuit?.[hk - 1];
-                if (hcs?.roomtemp !== undefined)
-                    roomdelta = (rc.p ?? 0) * (roomset - (hcs.roomtemp ?? 0)) + hcs.integState ?? 0;
-            }
-
-            let gradient = parseFloat(_("#gradient" + hk + " input").value);
-            let exponent = parseFloat(_("#exponent" + hk + " input").value);
-            let offset = parseFloat(_("#offset" + hk + " input").value);
-
-            function getPoint(ot, ft) {
-                return {
-                    x: origin.x + (xaxis.min - ot) * xaxis.zoom,
-                    y: origin.y - (ft - yaxis.min) * yaxis.zoom
-                }
-            }
-
-            function drawMarkerPoint(p, color) {
-                ctx.fillStyle = color;
-                ctx.fillRect(p.x - 3, p.y - 3, 6, 6);    
-            }
-
-            let otStart = Math.min(roomset, xaxis.min);
-            let ft = getFlowTemperature(otStart, roomset, flowmax, exponent, gradient, offset);
-            let p1 = getPoint(otStart, ft); //foot
-
-            drawMarkerPoint(p1, '#A33');
-
-            function drawFlowCurve(color, delta) {
-                ctx.strokeStyle = color;
-                ctx.lineWidth = 3;
-                let ft = getFlowTemperature(otStart, roomset, flowmax, exponent, gradient, offset) + delta;
-                let p = getPoint(otStart, ft);
-                ctx.beginPath();
-                ctx.moveTo(p.x, p.y);
-                let otf = false;
-                for (var ot = otStart; ot >= xaxis.max; ot -= 0.5) {
-                    ft = getFlowTemperature(ot, roomset, flowmax, exponent, gradient, offset) + delta;
-
-                    if ((ft >= flowmax) && !otf) {
-                        ctx.stroke();
-                        ctx.strokeStyle = "#888";
-                        ctx.beginPath();
-                        ctx.moveTo(p.x, p.y);
-                        otf = true;
-                    }
-
-                    p = getPoint(ot, ft);
-                    ctx.lineTo(p.x, p.y);
-
-                    if (ft >= yaxis.max)
-                        break;
-                }
-                ctx.stroke();
-            }
-            drawFlowCurve("#F00", 0);
-            if (roomdelta != 0)
-                drawFlowCurve("#0F0", roomdelta);
-
-            //draw curve's basepoint
-            drawMarkerPoint(p1, '#F00');
-
-            if (statuscache.outsideTemp !== undefined) {
-                //draw outsidetemp & it's flowtemperature
-                let ftsensor = getFlowTemperature(statuscache.outsideTemp, roomset, flowmax, exponent, gradient, offset) + roomdelta;
-                if (ftsensor > flowmax)
-                    ftsensor = flowmax;
-                let psensor = getPoint(statuscache.outsideTemp, ftsensor);
-                drawMarkerPoint(psensor, '#F83');
-                ctx.strokeStyle = "#F83";
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(origin.x, psensor.y);
-                ctx.lineTo(psensor.x, psensor.y);
-                ctx.lineTo(psensor.x, origin.y);
-                ctx.stroke();
-                ctx.fillText(Math.round(ftsensor * 10) / 10, origin.x + 30, psensor.y - 8);
-            }
-
-            //draw markers
-            config.heating[hk - 1].marker?.forEach(function (m) {
-                drawMarkerPoint(getPoint(m.ot, m.ft), '#3f8');
-            });
-
-            // draw current flow temp
-            let flow = (hk == 1) ? statuscache.slave?.flow_t : statuscache.slave?.flow_t2;
-            if (flow !== undefined && flow !== null) {
-                let pf = getPoint(xaxis.min, (hk == 1) ? statuscache?.slave.flow_t : statuscache?.slave.flow_t2);
-                let flame = statuscache.slave?.status?.flame;
-                ctx.fillStyle = (flame === true) ? "#fa0" : "#13f";
-                ctx.strokeStyle = "#000";
-                ctx.beginPath();
-                ctx.moveTo(pf.x - 4 , pf.y);
-                ctx.lineTo(pf.x + 5, pf.y + 4);
-                ctx.lineTo(pf.x + 5, pf.y - 4);
-                ctx.closePath();
-                ctx.stroke();
-                ctx.fill();
-            }
-        }
     </script>
 </body>
 </html>

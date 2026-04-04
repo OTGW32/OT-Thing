@@ -1,17 +1,24 @@
 #include "sensors.h"
-#include <OneWire.h>
 #include <DallasTemperature.h>
 #include "HADiscLocal.h"
 
-Sensor roomTemp[2];
+Sensor roomTemp[2] = {
+    Sensor(0.2),
+    Sensor(0.2)
+};
 AutoSensor roomSetPoint[2];
 OutsideTemp outsideTemp;
+Sensor returnTemp[2] = {
+    Sensor(0.4),
+    Sensor(0.4)
+};
 
 SemaphoreHandle_t AddressableSensor::mutex;
 Sensor* Sensor::lastSensor = nullptr;
+uint32_t Sensor::lastSmooth = 0;
 BLESensor* BLESensor::last = nullptr;
 OneWireNode *OneWireNode::last = nullptr;
-static OneWire oneWire(4);
+static OneWire oneWire;
 
 class SensorLock: public SemHelper {
 public:
@@ -19,18 +26,25 @@ public:
     }
 };
 
-Sensor::Sensor():
+Sensor::Sensor(const double alpha):
     src(SOURCE_NA),
-    setFlag(false) {
+    setFlag(false),
+    alpha(alpha) {
     prevSensor = lastSensor;
     lastSensor = this;
 }
 
 void Sensor::set(const double val, const Source src) {
     if ((src == this->src) || (src == SOURCE_NA)) {
-        this->value = round(val * 10) / 10;
+        value = val;
+        if ((!setFlag) || (alpha == 1.0))
+            smoothed = val;
         setFlag = true;
     }
+}
+
+void Sensor::updateSmooth() {
+    smoothed = alpha * value + (1.0 - alpha) * smoothed;
 }
 
 bool Sensor::get(double &val) {
@@ -41,12 +55,11 @@ bool Sensor::get(double &val) {
 
         auto *sensor = BLESensor::find(adr);
         if (sensor != nullptr)
-            val = sensor->temp;
-        return true;
+            set(sensor->temp, SOURCE_BLE);
     }
 
     if (setFlag)
-        val = this->value;
+        val = round(this->smoothed * 10) / 10;
     
     return setFlag;
 }
@@ -55,16 +68,37 @@ Sensor::operator bool() const {
     return setFlag;
 }
 
-void Sensor::setConfig(JsonObject &obj) {
-    src = (Source) (obj["source"] | (int) SOURCE_NA);
-    setFlag = false;
-    own = nullptr;
-    if (src == SOURCE_1WIRE) {
-        own = OneWireNode::find(String(obj["adr"]));
+Sensor* Sensor::findByOwn(const OneWireNode *own) {
+    Sensor *item = lastSensor;
+    while (item) {
+        if (item->own == own)
+            break;
+        item = item->prevSensor;
     }
-    else if (src == SOURCE_BLE) {
+    return item;
+}
+
+void Sensor::setConfig(JsonObject &obj) {
+    auto newSrc = (Source) (obj["source"] | (int) SOURCE_NA);
+    if (src != newSrc) {
+        setFlag = false;
+        src = newSrc;
+    }
+    
+    own = nullptr;
+    switch (src) {
+    case SOURCE_1WIRE:
+        own = OneWireNode::find(String(obj["adr"]));
+        setFlag = false;
+        break;
+
+    case SOURCE_BLE:
         for (int i=0; i<6; i++)
             adr[i] = strtol(String(obj[F("adr")]).substring(i * 2, i * 2 + 2).c_str(), 0, 16);
+        break;
+
+    default:
+        break;
     }
 }
 
@@ -77,14 +111,21 @@ bool Sensor::isOtSource() {
 }
 
 void Sensor::loopAll() {
+    const bool smooth = ((millis() - lastSmooth) >= 60000);
+    if (smooth)
+        lastSmooth = millis();
+    
     Sensor *item = lastSensor;
     while (item) {
         item->loop();
+        if (smooth && item->setFlag)
+            item->updateSmooth();
         item = item->prevSensor;
     }
 }
 
-AutoSensor::AutoSensor() {
+AutoSensor::AutoSensor():
+    Sensor(1.0) {
     memset(values, 0, sizeof(values));
 }
 
@@ -100,6 +141,7 @@ void AutoSensor::set(const double val, const Source src) {
 }
 
 OutsideTemp::OutsideTemp():
+        Sensor(0.2),
         nextMillis(0),
         httpState(HTTP_IDLE) {
 
@@ -279,16 +321,29 @@ OneWireNode::OneWireNode(uint8_t *addr):
     temp = DEVICE_DISCONNECTED_C;
 }
 
-void OneWireNode::begin() {
+void OneWireNode::begin(const uint8_t gpio) {
+    oneWire.begin(gpio);
     oneWire.reset_search();
+
     uint8_t addr[8];
     while (oneWire.search(addr))
         new OneWireNode(addr);
     loop();
 }
 
+void OneWireNode::clear() {
+    // free all nodes
+    while (last) {
+        auto node = static_cast<OneWireNode*>(last->next);
+        free(last);
+        last = node;
+    }
+}
+
 void OneWireNode::loop() {
     static uint32_t next = 0;
+    if (last == nullptr)
+        return;
     if (millis() > next) {
         OneWireNode *node = last;
         DallasTemperature ds(&oneWire);
@@ -296,12 +351,9 @@ void OneWireNode::loop() {
         while (node) {
             node->temp = round(ds.getTempC(node->adr) * 10) / 10;
             if (node->temp != DEVICE_DISCONNECTED_C) {
-                for (int i=0; i<sizeof(roomTemp) / sizeof(roomTemp[0]); i++) {
-                    if (roomTemp[i].own == node)
-                        roomTemp[i].set(node->temp, Sensor::SOURCE_1WIRE);
-                }
-                if (outsideTemp.own == node)
-                    outsideTemp.set(node->temp, Sensor::SOURCE_1WIRE);
+                Sensor *item = Sensor::findByOwn(node);
+                if (item)
+                    item->set(node->temp, Sensor::SOURCE_1WIRE);
             }
             node = static_cast<OneWireNode*>(node->next);
         }

@@ -24,6 +24,6 @@ public:
     bool hasFS() const { return fsOk; }
 } devconfig;
 
-extern const char CFG_FILENAME[];
+extern const char CFG_FILENAME[] PROGMEM;
 
 #endif

@@ -163,12 +163,12 @@ void Portal::begin(bool configMode) {
             return;
         }
         JsonDocument doc;
-        JsonObject jSlave = doc[F("slave")].to<JsonObject>();
+        JsonObject jSlave = doc[FPSTR(STR_STATKEY_SLAVE)].to<JsonObject>();
             for (auto *valobj: slaveValues)
                 valobj->getStatus(jSlave);
 
-        JsonObject jMaster = doc[F("master")].to<JsonObject>();
-            for (auto *valobj: thermostatValues)
+        JsonObject jMaster = doc[FPSTR(STR_STATKEY_MASTER)].to<JsonObject>();
+            for (auto *valobj: masterValues)
                 valobj->getStatus(jMaster);
 
         AsyncResponseStream *response = request->beginResponseStream(FPSTR(APP_JSON));
@@ -271,6 +271,17 @@ void Portal::begin(bool configMode) {
             list += line + F("\r\n");
         }
         request->send(200, F("text/plain"), list);
+    });
+
+    websrv.on(PSTR("/set"), HTTP_GET, [this](AsyncWebServerRequest *request) {
+        for (int i=0; i<request->params(); i++) {
+            const AsyncWebParameter* par = request->getParam(i);
+            String key = par->name();
+            String value = par->value();
+            if (!mqtt.setValue(key, value))
+                request->send(503);
+        }
+        request->send(200);
     });
 }
 

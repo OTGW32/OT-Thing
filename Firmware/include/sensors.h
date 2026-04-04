@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <AsyncTCP.h>
+#include <OneWire.h>
 #include <NimBLEDevice.h>
 #include "util.h"
 
@@ -59,7 +60,8 @@ protected:
     bool sendDiscovery() override;
 public:
     OneWireNode(uint8_t *addr);
-    static void begin();
+    static void begin(const uint8_t gpio);
+    static void clear();
     static OneWireNode* find(String adr);
     static void loop();
     static void writeJsonAll(JsonObject &status);
@@ -78,7 +80,7 @@ public:
         SOURCE_AUTO = 5 // has to be last item in this list!
     };
     OneWireNode *own; // points to a OneWireNode if configured
-    Sensor();
+    Sensor(const double alpha);
     virtual void set(const double val, const Source src);
     bool get(double &val);
     virtual void setConfig(JsonObject &obj);
@@ -86,15 +88,20 @@ public:
     bool isOtSource();
     static void loopAll();
     explicit operator bool() const;
+    static Sensor* findByOwn(const OneWireNode *own);
 protected:
     Source src;
     double value;
+    double smoothed;
     bool setFlag;
     virtual void loop() {}
 private:
+    void updateSmooth();
+    static uint32_t lastSmooth;
     static Sensor *lastSensor;
     Sensor *prevSensor;
     uint8_t adr[6];
+    double alpha;
 };
 
 class AutoSensor: public Sensor {
@@ -129,4 +136,5 @@ private:
 extern Sensor roomTemp[2];
 extern AutoSensor roomSetPoint[2];
 extern OutsideTemp outsideTemp;
+extern Sensor returnTemp[2];
 

@@ -5,9 +5,17 @@
 #include "mqtt.h"
 #include "otcontrol.h"
 #include "sensors.h"
+#include "auxInput.h"
 #include <HADiscovery.h>
 
 const char CFG_FILENAME[] PROGMEM = "/config.json";
+
+const char CFGKEY_HOSTNAME[] PROGMEM = "hostname";
+const char CFGKEY_HAPREFIX[] PROGMEM = "haPrefix";
+const char CFGKEY_MQTT[] PROGMEM = "mqtt";
+const char CFGKEY_OUTSIDETEMP[] PROGMEM = "outsideTemp";
+const char CFGKEY_HEATING[] PROGMEM = "heating";
+const char *CFGKEY_AUX PROGMEM = "aux";
 
 DevConfig devconfig;
 extern bool configMode;
@@ -48,11 +56,11 @@ void DevConfig::update() {
         JsonDocument doc;
         deserializeJson(doc, f);
 
-        if (doc[F("hostname")].is<String>())
-            hostname = doc[F("hostname")].as<String>();
+        if (doc[FPSTR(CFGKEY_HOSTNAME)].is<String>())
+            hostname = doc[FPSTR(CFGKEY_HOSTNAME)].as<String>();
 
-        if (doc[F("haPrefix")].is<String>())
-            HADiscovery::setHAPrefix(doc[F("haPrefix")].as<String>());
+        if (doc[FPSTR(CFGKEY_HAPREFIX)].is<String>())
+            HADiscovery::setHAPrefix(doc[FPSTR(CFGKEY_HAPREFIX)].as<String>());
 
         timezone = doc[F("timezone")] | 3600;
 
@@ -64,9 +72,9 @@ void DevConfig::update() {
             MDNS.begin(hostname);
         }
 
-        if (doc[F("mqtt")].is<JsonObject>()) {
+        if (doc[FPSTR(CFGKEY_MQTT)].is<JsonObject>()) {
             MqttConfig mc;
-            const JsonObject &jobj = doc[F("mqtt")].as<JsonObject>();
+            const JsonObject &jobj = doc[FPSTR(CFGKEY_MQTT)].as<JsonObject>();
             mc.host = jobj[F("host")].as<String>();
             mc.port = jobj[F("port")].as<uint16_t>();
             mc.tls = jobj[F("tls")].as<bool>();
@@ -76,17 +84,28 @@ void DevConfig::update() {
             mqtt.setConfig(mc);
         }
 
-        if (doc[F("outsideTemp")].is<JsonObject>()) {
-            JsonObject obj = doc[F("outsideTemp")];
+        OneWireNode::clear();
+        for (int i=0; i<sizeof(auxInput) / sizeof(auxInput[0]); i++) {
+            JsonObject obj = doc[FPSTR(CFGKEY_AUX)][i];
+            auxInput[i].setConfig(obj);
+        }   
+
+        if (doc[FPSTR(CFGKEY_OUTSIDETEMP)].is<JsonObject>()) {
+            JsonObject obj = doc[FPSTR(CFGKEY_OUTSIDETEMP)];
             outsideTemp.setConfig(obj);
         }
 
         for (int i=0; i<2; i++) {
-            JsonObject obj = doc[F("heating")][i][F("roomtemp")];
+            JsonObject hcfg = doc[FPSTR(CFGKEY_HEATING)][i]; 
+            
+            JsonObject obj = hcfg[F("roomtemp")];
             roomTemp[i].setConfig(obj);
 
-            JsonObject obj2 = doc[F("heating")][i][F("roomsetpoint")];
-            roomSetPoint[i].setConfig(obj2);
+            obj = hcfg[F("roomsetpoint")];
+            roomSetPoint[i].setConfig(obj);
+
+            obj = hcfg[F("returnLimit")];
+            returnTemp[i].setConfig(obj);
         }
 
         JsonObject cfg = doc.as<JsonObject>();

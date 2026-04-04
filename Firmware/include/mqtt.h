@@ -2,7 +2,6 @@
 
 #include <AsyncMqttClient.h>
 #include <ArduinoJson.h>
-#include "otcontrol.h"
 
 struct MqttConfig {
     String host;
@@ -14,6 +13,58 @@ struct MqttConfig {
 };
 
 class Mqtt {
+public:
+    enum MqttTopic: uint8_t {
+        TOPIC_OUTSIDETEMP,
+        TOPIC_DHWSETTEMP,
+        TOPIC_CHSETTEMP1,
+        TOPIC_CHSETTEMP2,
+        TOPIC_CHMINTEMP1,
+        TOPIC_CHMINTEMP2,
+        TOPIC_DHWMODE,
+        TOPIC_CHMODE1,
+        TOPIC_CHMODE2,
+        TOPIC_ROOMTEMP1,
+        TOPIC_ROOMTEMP2,
+        TOPIC_ROOMSETPOINT1,
+        TOPIC_ROOMSETPOINT2,
+        TOPIC_ROOMMODE1,
+        TOPIC_ROOMMODE2,
+        TOPIC_OVERRIDECHON1,
+        TOPIC_OVERRIDECHON2,
+        TOPIC_OVERRIDECHFLOW1,
+        TOPIC_OVERRIDECHFLOW2,
+        TOPIC_OVERRIDEDHW,
+        TOPIC_VENTSETPOINT,
+        TOPIC_VENTENABLE,
+        TOPIC_OPENBYPASS,
+        TOPIC_AUTOBYPASS,
+        TOPIC_FREEVENTENABLE,
+        TOPIC_MAXMODULATION,
+        TOPIC_BYPASS,
+        TOPIC_UNKNOWN // has to be at end of list!
+    };
+    enum ValueTemplateType {
+        VALTMPL_ROOT,
+        VALTMPL_DHW,
+        VALTMPL_SLAVE,
+        VALTMPL_MASTER,
+        VALTMPL_HEATING_CIRCUIT
+    };
+    Mqtt();
+    void begin();
+    void loop();
+    bool connected();
+    void setConfig(const MqttConfig conf);
+    bool publish(String topic, JsonDocument &payload, const bool retain);
+    void onMessage(const char *topic, String &payload);
+    bool setValue(const String &key, const String &value);
+    String getBaseTopic();
+    static String getTopicString(const MqttTopic topic);
+    String getCmdTopic(const MqttTopic topic);
+    uint32_t getNumDisc() const;
+    String getValueTemplate(const ValueTemplateType vt, PGM_P field, const uint8_t ch=-1, const uint8_t ommit=-1);
+    String getValueTemplateBool(const ValueTemplateType vt, PGM_P field, const uint8_t ch=-1, const uint8_t ommit=-1);
 private:
     void onConnect();
     void onDisconnect(AsyncMqttClientDisconnectReason reason);
@@ -28,44 +79,8 @@ private:
     String statusTopic;
     bool discFlag {false}; // discovery flag; set after MQTT (re-) connect
     bool conFlag;
-    OTControl::CtrlMode strToCtrlMode(String &str);
-public:
-    enum MqttTopic: uint8_t {
-        TOPIC_OUTSIDETEMP,
-        TOPIC_DHWSETTEMP,
-        TOPIC_CHSETTEMP1,
-        TOPIC_CHSETTEMP2,
-        TOPIC_DHWMODE,
-        TOPIC_CHMODE1,
-        TOPIC_CHMODE2,
-        TOPIC_ROOMTEMP1,
-        TOPIC_ROOMTEMP2,
-        TOPIC_ROOMSETPOINT1,
-        TOPIC_ROOMSETPOINT2,
-        TOPIC_ROOMCOMP1,
-        TOPIC_ROOMCOMP2,
-        TOPIC_OVERRIDECH1,
-        TOPIC_OVERRIDECH2,
-        TOPIC_OVERRIDEDHW,
-        TOPIC_VENTSETPOINT,
-        TOPIC_VENTENABLE,
-        TOPIC_OPENBYPASS,
-        TOPIC_AUTOBYPASS,
-        TOPIC_FREEVENTENABLE,
-        TOPIC_MAXMODULATION,
-        TOPIC_UNKNOWN // has to be at end of list!
-    };
-    Mqtt();
-    void begin();
-    void loop();
-    bool connected();
-    void setConfig(const MqttConfig conf);
-    bool publish(String topic, JsonDocument &payload, const bool retain);
-    void onMessage(const char *topic, String &payload);
-    String getBaseTopic();
-    static String getTopicString(const MqttTopic topic);
-    String getCmdTopic(const MqttTopic topic);
-    uint32_t getNumDisc() const;
+    bool strToBool(const String &str);
+    String getValuePath(const ValueTemplateType vt, PGM_P field, const uint8_t ch, const uint8_t ommit);
 };
 
 extern Mqtt mqtt;

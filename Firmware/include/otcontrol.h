@@ -4,6 +4,8 @@
 #include "ArduinoJson.h"
 #include "util.h"
 #include "masterrequests.h"
+#include "CHcontrol.h"
+#include "flamestats.h"
 
 const uint8_t NUM_HEATCIRCUITS = 2;
 
@@ -20,12 +22,6 @@ friend OTWriteRequest;
 friend class BrandInfo;
 friend class SemMaster;
 public:
-    enum CtrlMode: int8_t {
-        CTRLMODE_UNKNOWN = -1,
-        CTRLMODE_OFF = 0,
-        CTRLMODE_ON = 1,
-        CTRLMODE_AUTO = 2
-    };
     friend void otCbSlave(unsigned long response, OpenThermResponseStatus status);
     friend void otCbMaster(unsigned long response, OpenThermResponseStatus status);
     friend void IRAM_ATTR handleIrqMaster();
@@ -36,11 +32,10 @@ public:
 private:
     void OnRxMaster(const unsigned long msg, const OpenThermResponseStatus status);
     void OnRxSlave(const unsigned long msg, const OpenThermResponseStatus status);
-    bool setThermostatVal(const unsigned long msg);
+    bool setMasterVal(const unsigned long msg);
     void sendRequest(const char source, const unsigned long msg);
     void masterPinIrq();
     void slavePinIrq();
-    double getFlow(const uint8_t channel);
     uint16_t tmpToData(const double tmpf);
     void hwYield();
     unsigned long buildBrandResponse(const OpenThermMessageID id, const String &str, const uint8_t idx);
@@ -53,45 +48,15 @@ private:
         OTMODE_REPEATER = 2,
         OTMODE_LOOPBACKTEST = 4
     } otMode;
-    void setOTMode(const OTMode mode, const bool enableSlave = false);
+    void setOTMode(const OTMode mode);
     enum SlaveApplication: uint8_t {
         SLAVEAPP_HEATCOOL = 0,
         SLAVEAPP_VENT = 1,
         SLAVEAPP_SOLAR = 2
     } slaveApp;
-    struct HeatingConfig {
-        bool chOn;
-        double roomSet; // default room set point
-        double flowMax;
-        double exponent;
-        double gradient;
-        double offset;
-        double flow; // default flow temperature 
-        bool enableHyst;
-        double hysteresis;
-        struct {
-            bool enabled;
-            double p; // Kp K/K
-            double i; // Ki 1/h
-            double boost; // Kb K/K
-        } roomComp;
-    } heatingConfig[NUM_HEATCIRCUITS];
-    struct HeatingControl {
-        bool chOn;
-        double flowTemp;
-        CtrlMode mode {CTRLMODE_AUTO};
-        bool overrideFlow;
-        struct PiCtrl {
-            bool enabled;
-            bool init { false };
-            double roomTempFilt;
-            double rspPrev; // previous room setpoint
-            double integState {0}; // state of integrator / K
-            double deltaT {0};
-        } piCtrl;
-        bool suspended {false};
-    } heatingCtrl[NUM_HEATCIRCUITS];
-    void loopPiCtrl();
+    CHcontrol chcontrol[NUM_HEATCIRCUITS];
+    void loopRoomComp(const uint8_t ch);
+    void loopRetLimit(const uint8_t ch);
     unsigned long nextPiCtrl { 0 };
     struct {
         bool ventEnable;
@@ -109,29 +74,14 @@ private:
     struct {
         bool dhwOn;
         double dhwTemp;
-        bool overrideDhw;
         uint8_t maxModulation;
     } boilerCtrl;
-    struct FlameRatio {
-        void loop();
-        uint8_t getDuty() const;
-        double getFreq() const;
-    private:
-        static const uint8_t FLAMERAT_BUFSIZE = 180;
-        void update();
-        void set(const bool flame);
-        bool init {false};
-        bool currentFlame {false};
-        uint32_t lastEdge {0};
-        uint32_t lastInc {0};
-        uint8_t idx {0};
-        struct Ringbuf {
-            void update(const uint8_t idx);
-            uint8_t current {0};
-            uint8_t buf[FLAMERAT_BUFSIZE];
-            uint32_t sum {0};
-        } on, cycles;
-    } flameRatio;
+    struct {
+        bool active;
+        double temp;
+        double on;
+    } dhwOvrd;
+    FlameStats flameStats;
     bool discFlag {true};
     OTWRSetDhw setDhwRequest;
     OTWRSetBoilerTemp setBoilerRequest[NUM_HEATCIRCUITS];
@@ -161,8 +111,10 @@ private:
         void onReceive(const char source, const unsigned long msg);
         void sendResponse(const unsigned long msg, const char source = 0);
     } master, slave;
-    bool slaveEnabled {false};
+    bool enableSlave {false};
+    bool bypass {false};
     uint16_t statusReqOvl {0}; // will be or'ed to status request as this is needed by some boilers
+    bool init {false};
 public:
     OTControl();
     void begin();
@@ -172,19 +124,23 @@ public:
     void setConfig(JsonObject &config);
     void setDhwTemp(const double temp);
     void setChTemp(const double temp, const uint8_t channel);
-    void setChCtrlMode(const CtrlMode mode, const uint8_t channel);
-    void setDhwCtrlMode(const CtrlMode mode);
+    void setChCtrlMode(const HADiscovery::ClimateMode mode, const uint8_t channel);
+    void setDhwCtrlMode(const HADiscovery::ClimateMode mode);
     bool sendDiscovery();
     bool sendCapDiscoveries();
     void forceFlowCalc(const uint8_t channel);
     void setVentSetpoint(const uint8_t v);
     void setVentEnable(const bool en);
-    void setOverrideCh(const bool ovrd, const uint8_t channel);
+    void setOverrideChOn(const bool ovrd, const uint8_t channel);
+    void setOverrideChFlow(const bool ovrd, const uint8_t channel);
     void setOverrideDhw(const bool ovrd);
     void setMaxMod(const int mm);
-    void setRoomComp(const bool en, const uint8_t channel);
-    void bypass();
+    void setRoomMode(const HADiscovery::ClimateMode mode, const uint8_t channel);
+    void setFlowMin(const double flowMin, const uint8_t channel);
+    void setBypass(const bool bypass);
+    bool getFlame() const;
+    bool getDhwActive() const;
+    bool getChActive(const uint8_t channel) const;
 };
-
 
 extern OTControl otcontrol;

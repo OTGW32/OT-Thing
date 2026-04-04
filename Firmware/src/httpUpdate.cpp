@@ -85,7 +85,7 @@ void HttpUpdate::update() {
         return;
     }
 
-    otcontrol.bypass();
+    otcontrol.setBypass(true);
 
     auto stream = https.getStreamPtr();
     uint8_t buf[512];
